@@ -66,6 +66,20 @@ php-task-manager/
 
 4. Access the application at `http://localhost/`
 
+## Screenshots
+
+### Login Page
+![Login Page](.playwright-mcp/screenshots/login.png)
+
+### Registration Page
+![Registration Page](.playwright-mcp/screenshots/register.png)
+
+### Create Task Form
+![Create Task](.playwright-mcp/screenshots/create-task.png)
+
+### Task List with Multiple Tasks
+![Task List](.playwright-mcp/screenshots/tasks-with-statuses.png)
+
 ## Usage
 
 1. Register a new account
