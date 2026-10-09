@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/exceptions.php';
 
 class User {
     private $db;
@@ -18,7 +19,7 @@ class User {
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
             if ($e->getCode() == 23000) {
-                throw new Exception('Username or email already exists');
+                throw new ValidationException('Username or email already exists');
             }
             throw $e;
         }

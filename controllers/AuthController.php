@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../includes/exceptions.php';
 require_once __DIR__ . '/../includes/validation.php';
 require_once __DIR__ . '/../models/User.php';
 
@@ -35,8 +36,12 @@ class AuthController {
             $_SESSION['username'] = $username;
             header('Location: /index.php?controller=task&action=index');
             exit;
-        } catch (Exception $e) {
+        } catch (ValidationException $e) {
             $errors[] = $e->getMessage();
+            require __DIR__ . '/../views/auth/register.php';
+        } catch (PDOException $e) {
+            error_log('Registration failed: ' . $e->getMessage());
+            $errors[] = 'Registration failed. Please try again.';
             require __DIR__ . '/../views/auth/register.php';
         }
     }

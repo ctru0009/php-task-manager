@@ -29,7 +29,7 @@
 
     <main class="container">
         <?php if (isset($_SESSION['message'])): ?>
-            <div class="message <?php echo $_SESSION['message_type'] ?? 'success'; ?>">
+            <div class="message <?php echo htmlspecialchars($_SESSION['message_type'] ?? 'success'); ?>">
                 <?php echo htmlspecialchars($_SESSION['message']); ?>
             </div>
             <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
