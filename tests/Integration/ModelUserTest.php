@@ -45,6 +45,27 @@ final class ModelUserTest extends DatabaseTestCase
         $this->assertSame(1, (int) TestDatabase::scalar('SELECT COUNT(*) FROM users'));
     }
 
+    public function testAnUnknownUsernameCostsTheSameAsAWrongPassword(): void
+    {
+        $user = new User();
+        $user->register('alice', 'alice@example.com', self::PASSWORD);
+
+        $start = microtime(true);
+        $user->login('alice', 'definitely-wrong');
+        $wrongPassword = microtime(true) - $start;
+
+        $start = microtime(true);
+        $missing = $user->login('nobody-here', 'definitely-wrong');
+        $unknownUser = microtime(true) - $start;
+
+        $this->assertNull($missing);
+        $this->assertGreaterThan(
+            $wrongPassword * 0.5,
+            $unknownUser,
+            'A missing account must still run a bcrypt verification, otherwise the response time reveals which usernames exist.'
+        );
+    }
+
     public function testRegisterRejectsADuplicateEmail(): void
     {
         $user = new User();

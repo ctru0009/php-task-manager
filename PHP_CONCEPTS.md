@@ -2,6 +2,8 @@
 
 This document explains all PHP concepts used in the Task Manager project, from basics to advanced topics.
 
+Every example names the file it comes from instead of a line number, so the references do not drift as the code changes. Open the file to see the current version.
+
 ---
 
 ## Table of Contents
@@ -29,12 +31,16 @@ This document explains all PHP concepts used in the Task Manager project, from b
 
 PHP code must start with `<?php` tag. This tells the server to interpret the following code as PHP.
 
-**Example from `index.php:1`:**
+**Example from `index.php`:**
 ```php
 <?php
 
+require_once __DIR__ . '/config/headers.php';
+require_once __DIR__ . '/config/session.php';
+
 session_start();
 
+require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/config/database.php';
 ```
 
@@ -67,12 +73,12 @@ PHP supports single-line comments (`//`) and multi-line comments (`/* */`).
 
 Variables in PHP start with a dollar sign `$` followed by the variable name. They are case-sensitive.
 
-**Example from `models/User.php:6`:**
+**Example from `models/User.php`:**
 ```php
 private $db;
 ```
 
-**Example from `index.php:7`:**
+**Example from `index.php`:**
 ```php
 $controller = $_GET['controller'] ?? 'auth';
 ```
@@ -128,12 +134,12 @@ $message = "Hello " . $username;
 - `>` - Greater than
 - `<` - Less than
 
-**Example from `controllers/AuthController.php:33`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 !filter_var($email, FILTER_VALIDATE_EMAIL)
 ```
 
-**Example from `controllers/AuthController.php:43`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 if ($password !== $confirmPassword) {
     $errors[] = 'Passwords do not match';
@@ -146,7 +152,7 @@ if ($password !== $confirmPassword) {
 - `||` or `or` - At least one condition must be true
 - `!` - Not (reverses the condition)
 
-**Example from `controllers/AuthController.php:32`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = 'Invalid email format';
@@ -157,7 +163,7 @@ elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 Returns the first value if it exists and is not null, otherwise returns the second value.
 
-**Example from `index.php:7-8`:**
+**Example from `index.php`:**
 ```php
 $controller = $_GET['controller'] ?? 'auth';
 $action = $_GET['action'] ?? 'login';
@@ -169,7 +175,7 @@ If `$_GET['controller']` exists, use its value; otherwise use 'auth' as default.
 
 Used in conditional checks.
 
-**Example from `views/task/index.php:10`:**
+**Example from `views/task/index.php`:**
 ```php
 isset($_GET['status']) && $_GET['status'] === 'pending'
 ```
@@ -182,7 +188,7 @@ isset($_GET['status']) && $_GET['status'] === 'pending'
 
 Execute different code based on conditions.
 
-**Example from `controllers/AuthController.php:25-29`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 if (empty($username)) {
     $errors[] = 'Username is required';
@@ -195,7 +201,7 @@ if (empty($username)) {
 
 Test a single variable against multiple values.
 
-**Example from `index.php:10-28`:**
+**Example from `index.php`:**
 ```php
 switch ($controller) {
     case 'auth':
@@ -223,7 +229,7 @@ switch ($controller) {
 
 Iterate over arrays.
 
-**Example from `views/task/index.php:19`:**
+**Example from `views/task/index.php`:**
 ```php
 <?php $index = 0; foreach ($tasks as $task): $index++; ?>
     <div class="task task-<?php echo $task['status']; ?>">
@@ -236,7 +242,7 @@ Iterate over arrays.
 
 Shorthand for if-else statements.
 
-**Example from `models/Task.php:19`:**
+**Example from `models/Task.php`:**
 ```php
 if ($status) {
     $stmt = $this->db->prepare('...');
@@ -255,7 +261,7 @@ if ($status) {
 ```php
 $username = trim($_POST['username'] ?? '');
 ```
-**Reference:** `controllers/AuthController.php:18`
+**Reference:** `controllers/AuthController.php`
 
 **`strlen()`** - Returns string length
 ```php
@@ -263,7 +269,7 @@ elseif (strlen($username) < 3) {
     $errors[] = 'Username must be at least 3 characters';
 }
 ```
-**Reference:** `controllers/AuthController.php:28`
+**Reference:** `controllers/AuthController.php`
 
 **`empty()`** - Checks if a variable is empty
 ```php
@@ -271,13 +277,13 @@ if (empty($username)) {
     $errors[] = 'Username is required';
 }
 ```
-**Reference:** `controllers/AuthController.php:25`
+**Reference:** `controllers/AuthController.php`
 
 **`isset()`** - Checks if a variable is set and is not null
 ```php
 isset($_GET['status'])
 ```
-**Reference:** `views/task/index.php:10`
+**Reference:** `views/task/index.php`
 
 **`in_array()`** - Checks if a value exists in an array
 ```php
@@ -290,7 +296,7 @@ if (in_array($status, ['pending', 'in_progress', 'completed'])) {
 ```php
 date('M d, Y', strtotime($task['created_at']))
 ```
-**Reference:** `views/task/index.php:30`
+**Reference:** `views/task/index.php`
 
 **`filter_var()`** - Filters a variable with a specified filter
 ```php
@@ -298,13 +304,13 @@ elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = 'Invalid email format';
 }
 ```
-**Reference:** `controllers/AuthController.php:33`
+**Reference:** `controllers/AuthController.php`
 
 ### User-Defined Functions
 
 Methods are functions defined inside classes.
 
-**Example from `models/User.php:12-25`:**
+**Example from `models/User.php`:**
 ```php
 public function register($username, $email, $password) {
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
@@ -315,7 +321,7 @@ public function register($username, $email, $password) {
         return $this->db->lastInsertId();
     } catch (PDOException $e) {
         if ($e->getCode() == 23000) {
-            throw new Exception('Username or email already exists');
+            throw new ValidationException('Username or email already exists');
         }
         throw $e;
     }
@@ -330,7 +336,7 @@ public function register($username, $email, $password) {
 
 Classes are blueprints for creating objects. They define properties and methods.
 
-**Example from `config/database.php:3`:**
+**Example from `config/database.php`:**
 ```php
 class Database {
     private static $instance = null;
@@ -343,7 +349,7 @@ class Database {
 
 Instances of classes created using the `new` keyword.
 
-**Example from `index.php:13`:**
+**Example from `index.php`:**
 ```php
 $authController = new AuthController();
 ```
@@ -352,7 +358,7 @@ $authController = new AuthController();
 
 Variables that belong to a class.
 
-**Example from `models/User.php:6`:**
+**Example from `models/User.php`:**
 ```php
 private $db;
 ```
@@ -375,7 +381,7 @@ public function login() {  // Accessible from anywhere
 
 Functions that belong to a class.
 
-**Example from `models/User.php:27-38`:**
+**Example from `models/User.php`:**
 ```php
 public function login($username, $password) {
     $stmt = $this->db->prepare('SELECT * FROM users WHERE username = ?');
@@ -395,7 +401,7 @@ public function login($username, $password) {
 
 Special method called automatically when an object is created.
 
-**Example from `models/User.php:8-10`:**
+**Example from `models/User.php`:**
 ```php
 public function __construct() {
     $this->db = Database::getConnection();
@@ -406,7 +412,7 @@ public function __construct() {
 
 Refers to the current object instance.
 
-**Example from `models/User.php:9`:**
+**Example from `models/User.php`:**
 ```php
 $this->db = Database::getConnection();
 ```
@@ -415,12 +421,12 @@ $this->db = Database::getConnection();
 
 Belong to the class itself, not to any specific object instance. Accessed with `::` operator.
 
-**Example from `config/database.php:5`:**
+**Example from `config/database.php`:**
 ```php
 private static $instance = null;
 ```
 
-**Example from `config/database.php:26-32`:**
+**Example from `config/database.php`:**
 ```php
 public static function getInstance() {
     if (self::$instance === null) {
@@ -434,7 +440,7 @@ public static function getInstance() {
 
 Design pattern that ensures only one instance of a class exists.
 
-**Example from `config/database.php:26-32`:**
+**Example from `config/database.php`:**
 ```php
 public static function getInstance() {
     if (self::$instance === null) {
@@ -461,12 +467,12 @@ self::$instance = new self();
 
 Includes and evaluates a file only once, preventing duplicate inclusions and errors.
 
-**Example from `index.php:5`:**
+**Example from `index.php`:**
 ```php
 require_once __DIR__ . '/config/database.php';
 ```
 
-**Example from `models/User.php:3`:**
+**Example from `models/User.php`:**
 ```php
 require_once __DIR__ . '/../config/database.php';
 ```
@@ -475,7 +481,7 @@ require_once __DIR__ . '/../config/database.php';
 
 Same as `require_once`, but doesn't check if file was already included.
 
-**Example from `controllers/AuthController.php:14`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 require __DIR__ . '/../views/auth/register.php';
 ```
@@ -484,7 +490,7 @@ require __DIR__ . '/../views/auth/register.php';
 
 Returns the directory path of the current file.
 
-**Example from `index.php:5`:**
+**Example from `index.php`:**
 ```php
 require_once __DIR__ . '/config/database.php';
 ```
@@ -512,7 +518,7 @@ Superglobals are built-in variables that are always accessible.
 
 Contains information about server and execution environment.
 
-**Example from `controllers/AuthController.php:16-19`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     require __DIR__ . '/../views/auth/register.php';
@@ -529,7 +535,7 @@ Common `$_SERVER` values:
 
 Contains data sent via URL query string.
 
-**Example from `index.php:7-8`:**
+**Example from `index.php`:**
 ```php
 $controller = $_GET['controller'] ?? 'auth';
 $action = $_GET['action'] ?? 'login';
@@ -541,7 +547,7 @@ URL: `http://example.com/index.php?controller=task&action=index`
 
 Contains data sent via HTTP POST (usually from forms).
 
-**Example from `controllers/AuthController.php:18`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 $username = trim($_POST['username'] ?? '');
 $email = trim($_POST['email'] ?? '');
@@ -552,13 +558,13 @@ $password = $_POST['password'] ?? '';
 
 Contains session variables that persist across page requests.
 
-**Example from `controllers/AuthController.php:39-40`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 $_SESSION['user_id'] = $userId;
 $_SESSION['username'] = $username;
 ```
 
-**Example from `controllers/AuthController.php:74-77`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 session_regenerate_id(true);
 csrf_rotate();
@@ -574,7 +580,7 @@ $_SESSION['username'] = $user['username'];
 
 Handle exceptions that might occur during code execution.
 
-**Example from `config/database.php:10-31`:**
+**Example from `config/database.php`:**
 ```php
 $host = self::env('DB_HOST');
 $name = self::env('DB_NAME');
@@ -599,13 +605,13 @@ try {
 }
 ```
 
-The connection details come from the environment and a missing variable stops the request before PDO is even created (see `config/database.php:33-44`), so a misconfigured deployment fails closed instead of guessing credentials.
+The connection details come from the environment and a missing variable stops the request before PDO is even created (see `config/database.php`), so a misconfigured deployment fails closed instead of guessing credentials.
 
 ### Throwing Exceptions
 
 Create and throw an exception to signal an error.
 
-**Example from `models/User.php:23-28`:**
+**Example from `models/User.php`:**
 ```php
 if ($e->getCode() == 23000) {
     throw new ValidationException('Username or email already exists');
@@ -619,7 +625,7 @@ throw $e;
 
 Special exception type for database errors.
 
-**Example from `models/User.php:18-28`:**
+**Example from `models/User.php`:**
 ```php
 try {
     $stmt = $this->db->prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
@@ -633,13 +639,13 @@ try {
 }
 ```
 
-**Reference:** `models/User.php:18-28`
+**Reference:** `models/User.php`
 
 ### exit
 
 Stops script execution and can output a message.
 
-**Example from `config/database.php:26-29`:**
+**Example from `config/database.php`:**
 ```php
 } catch (PDOException $e) {
     error_log('Database connection failed: ' . $e->getMessage());
@@ -658,7 +664,7 @@ The message the visitor sees is generic; the PDO detail goes to the error log. `
 
 Send raw HTTP headers to the browser.
 
-**Example from `controllers/AuthController.php:78-79`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 header('Location: /index.php?controller=task&action=index');
 exit;
@@ -684,7 +690,7 @@ Always use `exit` after `header('Location: ...')` to prevent further code execut
 
 Check the HTTP method used for the request.
 
-**Example from `controllers/AuthController.php:54-57`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     require __DIR__ . '/../views/auth/login.php';
@@ -700,7 +706,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 Start a new or resume existing session. Must be called before any output.
 
-**Example from `index.php:5-7`:**
+**Example from `index.php`:**
 ```php
 require_once __DIR__ . '/config/session.php';
 
@@ -713,7 +719,7 @@ session_start();
 
 Destroys all session data.
 
-**Example from `controllers/AuthController.php:86-113`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 public function logout() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -751,7 +757,7 @@ public function logout() {
 
 Set values in the `$_SESSION` superglobal.
 
-**Example from `controllers/AuthController.php:76-77`:**
+**Example from `controllers/AuthController.php`:**
 ```php
 $_SESSION['user_id'] = $user['id'];
 $_SESSION['username'] = $user['username'];
@@ -761,7 +767,7 @@ $_SESSION['username'] = $user['username'];
 
 Read values from `$_SESSION`.
 
-**Example from `controllers/TaskController.php:19-21`:**
+**Example from `controllers/TaskController.php`:**
 ```php
 $userId = $_SESSION['user_id'];
 $statusFilter = status_filter($_GET['status'] ?? null);
@@ -778,10 +784,15 @@ The session is the only place the current user id comes from, so a visitor canno
 
 Connect to a database using PHP Data Objects (PDO).
 
-**Example from `config/database.php:11-12`:**
+**Example from `config/database.php`:**
 ```php
-$dsn = "mysql:host=db;dbname=task_manager;charset=utf8mb4";
-$this->connection = new PDO($dsn, "root", "rootpass");
+$host = self::env('DB_HOST');
+$name = self::env('DB_NAME');
+$user = self::env('DB_USER');
+$password = self::env('DB_PASSWORD');
+
+$dsn = "mysql:host=$host;dbname=$name;charset=utf8mb4";
+$this->connection = new PDO($dsn, $user, $password);
 ```
 
 DSN (Data Source Name) format: `mysql:host=hostname;dbname=database_name;charset=utf8mb4`
@@ -790,7 +801,7 @@ DSN (Data Source Name) format: `mysql:host=hostname;dbname=database_name;charset
 
 Configure PDO behavior.
 
-**Example from `config/database.php:13-20`:**
+**Example from `config/database.php`:**
 ```php
 $this->connection->setAttribute(
     PDO::ATTR_ERRMODE,
@@ -809,7 +820,7 @@ $this->connection->setAttribute(
 
 Prevent SQL injection by separating SQL from data.
 
-**Example from `models/User.php:16`:**
+**Example from `models/User.php`:**
 ```php
 $stmt = $this->db->prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
 ```
@@ -820,7 +831,7 @@ The `?` are placeholders that will be replaced with actual values.
 
 Pass values to placeholders and execute the query.
 
-**Example from `models/User.php:17`:**
+**Example from `models/User.php`:**
 ```php
 $stmt->execute([$username, $email, $hashedPassword]);
 ```
@@ -831,19 +842,19 @@ $stmt->execute([$username, $email, $hashedPassword]);
 ```php
 $user = $stmt->fetch();
 ```
-**Reference:** `models/User.php:30`
+**Reference:** `models/User.php`
 
 **Fetch all rows:**
 ```php
 $tasks = $stmt->fetchAll();
 ```
-**Reference:** `models/Task.php:26`
+**Reference:** `models/Task.php`
 
 ### lastInsertId()
 
 Get the ID of the last inserted row.
 
-**Example from `models/User.php:18`:**
+**Example from `models/User.php`:**
 ```php
 return $this->db->lastInsertId();
 ```
@@ -852,7 +863,7 @@ return $this->db->lastInsertId();
 
 Return the number of affected rows.
 
-**Example from `models/Task.php:38`:**
+**Example from `models/Task.php`:**
 ```php
 return $stmt->rowCount() > 0;
 ```
@@ -865,12 +876,12 @@ return $stmt->rowCount() > 0;
 
 Create a secure password hash.
 
-**Example from `models/User.php:13`:**
+**Example from `models/User.php`:**
 ```php
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 ```
 
-**Reference:** `models/User.php:13`
+**Reference:** `models/User.php`
 
 `PASSWORD_DEFAULT` uses the bcrypt algorithm (currently the strongest).
 
@@ -878,7 +889,7 @@ $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
 Verify a password against its hash.
 
-**Example from `models/User.php:32`:**
+**Example from `models/User.php`:**
 ```php
 if ($user && password_verify($password, $user['password'])) {
     unset($user['password']);
@@ -886,20 +897,20 @@ if ($user && password_verify($password, $user['password'])) {
 }
 ```
 
-**Reference:** `models/User.php:32`
+**Reference:** `models/User.php`
 
 ### htmlspecialchars()
 
 Convert special characters to HTML entities to prevent XSS (Cross-Site Scripting) attacks.
 
-**Example from `views/task/index.php:22`:**
+**Example from `views/task/index.php`:**
 ```php
 <h2><?php echo htmlspecialchars($task['title']); ?></h2>
 ```
 
-**Reference:** `views/task/index.php:22`
+**Reference:** `views/task/index.php`
 
-**Example from `views/task/index.php:27`:**
+**Example from `views/task/index.php`:**
 ```php
 <p><?php echo htmlspecialchars($task['description']); ?></p>
 ```
@@ -929,19 +940,19 @@ $query = "SELECT * FROM users WHERE username = '$username'"; // DON'T DO THIS!
 ```php
 <?php echo ucfirst(str_replace('_', ' ', $task['status'])); ?>
 ```
-**Reference:** `views/task/index.php:23`
+**Reference:** `views/task/index.php`
 
 **`str_replace()`** - Replace all occurrences of a string
 ```php
 str_replace('_', ' ', 'in_progress') // Returns 'in progress'
 ```
-**Reference:** `views/task/index.php:23`
+**Reference:** `views/task/index.php`
 
 **`strtotime()`** - Convert English textual date/time to Unix timestamp
 ```php
 strtotime($task['created_at'])
 ```
-**Reference:** `views/task/index.php:30`
+**Reference:** `views/task/index.php`
 
 ### Array Functions
 
@@ -950,26 +961,26 @@ strtotime($task['created_at'])
 $errors = [];
 $errors[] = 'Username is required';
 ```
-**Reference:** `controllers/AuthController.php:26`
+**Reference:** `controllers/AuthController.php`
 
 **Accessing array elements:**
 ```php
 $task['title']
 $task['status']
 ```
-**Reference:** `views/task/index.php:22-23`
+**Reference:** `views/task/index.php`
 
 **Unsetting array elements:**
 ```php
 unset($user['password']);
 ```
-**Reference:** `models/User.php:33`
+**Reference:** `models/User.php`
 
 **Checking if array is empty:**
 ```php
 if (empty($tasks)):
 ```
-**Reference:** `views/task/index.php:15
+**Reference:** `views/task/index.php`
 
 ---
 

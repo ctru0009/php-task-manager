@@ -43,8 +43,9 @@ final class HttpResponse
 
     public function csrf(): string
     {
-        // Tolerant on purpose: any attribute order or extra attributes on the
-        // hidden input must not break the whole suite with a harness error.
+        // Tolerant on purpose: extra attributes and whitespace on the hidden
+        // input must not break the whole suite with a harness error. The only
+        // producer, csrf_field(), emits name before value.
         if (preg_match('/<input[^>]*\bname="csrf_token"[^>]*\bvalue="([^"]*)"/', $this->body, $matches) !== 1) {
             throw new RuntimeException('No csrf_token field found in the response body.');
         }
