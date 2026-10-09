@@ -27,10 +27,11 @@
 
         <div class="form-group">
             <label for="priority">Priority</label>
+            <?php $selectedPriority = $priority ?? $task['priority']; ?>
             <select id="priority" name="priority">
-                <option value="low" <?php echo (isset($priority) && $priority === 'low') || $task['priority'] === 'low' ? 'selected' : ''; ?>>Low</option>
-                <option value="medium" <?php echo (!isset($priority) || $priority === 'medium') || $task['priority'] === 'medium' ? 'selected' : ''; ?>>Medium</option>
-                <option value="high" <?php echo (isset($priority) && $priority === 'high') || $task['priority'] === 'high' ? 'selected' : ''; ?>>High</option>
+                <option value="low" <?php echo $selectedPriority === 'low' ? 'selected' : ''; ?>>Low</option>
+                <option value="medium" <?php echo $selectedPriority === 'medium' ? 'selected' : ''; ?>>Medium</option>
+                <option value="high" <?php echo $selectedPriority === 'high' ? 'selected' : ''; ?>>High</option>
             </select>
         </div>
 
