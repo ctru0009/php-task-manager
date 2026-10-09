@@ -7,9 +7,14 @@ class Database
 
     private function __construct()
     {
+        $host = self::env('DB_HOST');
+        $name = self::env('DB_NAME');
+        $user = self::env('DB_USER');
+        $password = self::env('DB_PASSWORD');
+
         try {
-            $dsn = "mysql:host=db;dbname=task_manager;charset=utf8mb4";
-            $this->connection = new PDO($dsn, "root", "rootpass");
+            $dsn = "mysql:host=$host;dbname=$name;charset=utf8mb4";
+            $this->connection = new PDO($dsn, $user, $password);
             $this->connection->setAttribute(
                 PDO::ATTR_ERRMODE,
                 PDO::ERRMODE_EXCEPTION,
@@ -19,8 +24,23 @@ class Database
                 PDO::FETCH_ASSOC,
             );
         } catch (PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
+            error_log('Database connection failed: ' . $e->getMessage());
+            http_response_code(500);
+            exit('Service unavailable: database connection failed.');
         }
+    }
+
+    private static function env($name)
+    {
+        $value = getenv($name);
+
+        if ($value === false || $value === '') {
+            error_log('Missing required environment variable: ' . $name);
+            http_response_code(500);
+            exit('Service unavailable: missing required configuration (' . $name . ').');
+        }
+
+        return $value;
     }
 
     public static function getInstance()

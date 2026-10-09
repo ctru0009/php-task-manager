@@ -1,50 +1,45 @@
-# Docker Setup Instructions
+# Docker setup
 
-## Quick Start with Docker
+Full instructions live in the [README](README.md). This page covers the Docker commands you are most likely to need.
 
-1. Build and start the containers:
-   ```bash
-   docker-compose up -d
-   ```
-
-2. Import the database schema:
-   ```bash
-   docker-compose exec db mysql -uroot -prootpass < schema.sql
-   ```
-
-3. Access the application:
-   - Open your browser and go to: http://localhost:8080
-
-4. To stop the containers:
-   ```bash
-   docker-compose down
-   ```
-
-## Using Docker Database Configuration
-
-If you want to use Docker, replace the database configuration file:
+## Start
 
 ```bash
-mv config/database.php config/database.local.php
-mv config/database.docker.php config/database.php
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Or update the database credentials in `config/database.php` to match your Docker setup:
-- Host: `db`
-- Database: `task_manager`
-- User: `root`
-- Password: `rootpass`
+Open http://localhost:8080. The schema in `schema.sql` is imported automatically the first time the database volume is created.
 
-## Docker Commands
+The application reads `DB_HOST`, `DB_NAME`, `DB_USER` and `DB_PASSWORD` from the environment (via `.env`). Missing variables stop the application with a clear error instead of falling back to defaults.
 
-- View logs: `docker-compose logs -f`
-- Restart containers: `docker-compose restart`
-- Rebuild containers: `docker-compose up -d --build`
-- Access MySQL: `docker-compose exec db mysql -uroot -prootpass`
+## Stop and reset
+
+```bash
+docker compose down          # stop containers, keep the database volume
+docker compose down -v       # stop containers and delete the database
+docker compose up -d --build # rebuild and start
+docker compose logs -f       # follow web and database logs
+docker compose logs web      # application errors are logged here, never printed to the browser
+```
+
+## Database access
+
+```bash
+docker compose exec db mysql -uroot -p"$DB_PASSWORD"
+```
+
+## Tests
+
+```bash
+docker compose exec web composer install
+docker compose exec web php vendor/bin/phpunit
+```
+
+The suite creates its own database (`task_manager_test` by default) and never touches your development data.
 
 ## Troubleshooting
 
-If you encounter issues, try:
-1. `docker-compose down -v` (removes volumes and containers)
-2. `docker-compose up -d --build` (rebuilds and starts)
-3. Re-import the schema
+1. `docker compose down -v` removes volumes and containers.
+2. `docker compose up -d --build` rebuilds and starts.
+3. The schema is imported on first start of an empty database. After `down -v` it is imported again.

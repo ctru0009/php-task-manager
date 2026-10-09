@@ -51,20 +51,29 @@ php-task-manager/
 
 ## Installation
 
-1. Import the database schema:
+### Docker (recommended)
+
+1. Create your environment file:
    ```bash
-   mysql -u root -p < schema.sql
+   cp .env.example .env
+   ```
+   The application reads `DB_HOST`, `DB_NAME`, `DB_USER` and `DB_PASSWORD` from the environment. If any is missing, startup stops with a clear error rather than falling back to defaults.
+
+2. Build and start:
+   ```bash
+   docker compose up -d --build
    ```
 
-2. Configure database connection in `config/database.php`:
-   ```php
-   $dsn = 'mysql:host=localhost;dbname=task_manager;charset=utf8mb4';
-   $this->connection = new PDO($dsn, 'your_username', 'your_password');
-   ```
+3. Open http://localhost:8080. The schema is imported automatically the first time the database volume is created.
 
-3. Configure your web server to point to the project directory
+See [DOCKER_SETUP.md](DOCKER_SETUP.md) for reset, logs and database commands.
 
-4. Access the application at `http://localhost/`
+### Without Docker
+
+1. Point a web server with PHP 8.2 and the `pdo_mysql` extension at the project directory.
+2. Import the schema: `mysql -u root -p < schema.sql`.
+3. Export `DB_HOST`, `DB_NAME`, `DB_USER` and `DB_PASSWORD` before starting the web server.
+4. Access the application at http://localhost/
 
 ## Screenshots
 
