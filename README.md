@@ -78,16 +78,16 @@ See [DOCKER_SETUP.md](DOCKER_SETUP.md) for reset, logs and database commands.
 ## Screenshots
 
 ### Login Page
-![Login Page](.playwright-mcp/screenshots/login.png)
+![Login Page](docs/screenshots/login.png)
 
 ### Registration Page
-![Registration Page](.playwright-mcp/screenshots/register.png)
+![Registration Page](docs/screenshots/register.png)
 
 ### Create Task Form
-![Create Task](.playwright-mcp/screenshots/create-task.png)
+![Create Task](docs/screenshots/create-task.png)
 
 ### Task List with Multiple Tasks
-![Task List](.playwright-mcp/screenshots/tasks-with-statuses.png)
+![Task List](docs/screenshots/tasks-with-statuses.png)
 
 ## Usage
 

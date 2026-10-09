@@ -6,3 +6,6 @@
 /.phpunit.cache
 /.phpunit.result.cache
 /phpunit.xml
+/.claude
+/.playwright-mcp
+/.idea
