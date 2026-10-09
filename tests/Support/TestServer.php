@@ -30,8 +30,15 @@ final class TestServer
         $root = dirname(__DIR__, 2);
         self::$logFile = sys_get_temp_dir() . '/php-task-manager-test-server.log';
 
+        if (self::portIsOpen()) {
+            throw new RuntimeException(sprintf(
+                'Something is already listening on %s. Stop it and run the suite again: the tests must hit the server this process started.',
+                self::baseUrl()
+            ));
+        }
+
         $command = sprintf(
-            '%s -S %s:%d -t %s',
+            'exec %s -S %s:%d -t %s',
             escapeshellarg(PHP_BINARY),
             self::HOST,
             self::PORT,
@@ -90,5 +97,18 @@ final class TestServer
 
         proc_close(self::$process);
         self::$process = null;
+    }
+
+    private static function portIsOpen(): bool
+    {
+        $socket = @fsockopen(self::HOST, self::PORT, $errorNumber, $errorString, 0.2);
+
+        if (is_resource($socket)) {
+            fclose($socket);
+
+            return true;
+        }
+
+        return false;
     }
 }
