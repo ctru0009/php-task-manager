@@ -30,3 +30,8 @@
 
     <p class="auth-footer">Don't have an account? <a href="/index.php?controller=auth&action=register">Register</a></p>
 </div>
+
+</main>
+
+</body>
+</html>

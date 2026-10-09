@@ -40,3 +40,8 @@
 
     <p class="auth-footer">Already have an account? <a href="/index.php?controller=auth&action=login">Login</a></p>
 </div>
+
+</main>
+
+</body>
+</html>

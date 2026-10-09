@@ -58,3 +58,8 @@
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
+
+</main>
+
+</body>
+</html>
