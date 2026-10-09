@@ -32,13 +32,17 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - run: composer validate --strict
+      - name: Validate composer.json
+        run: composer validate --strict
 
-      - run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
 
-      - run: mysql -h 127.0.0.1 -uroot -prootpass < schema.sql
+      - name: Load the schema into MySQL
+        run: mysql -h 127.0.0.1 -uroot -prootpass < schema.sql
 
-      - run: php vendor/bin/phpunit --no-coverage
+      - name: Run the test suite
+        run: php vendor/bin/phpunit --no-coverage
         env:
           DB_HOST: 127.0.0.1
           DB_NAME: task_manager_test
