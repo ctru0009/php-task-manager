@@ -4,6 +4,9 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/exceptions.php';
 
 class User {
+    /** Bcrypt hash of a value nobody can submit, used for timing parity. */
+    private const DUMMY_PASSWORD_HASH = '$2y$10$W.9OpOqrXx.bWyfDYLSVEO4TE6i/db36blKVqBhcWBMEK1nYZmeNS';
+
     private $db;
 
     public function __construct() {
@@ -30,11 +33,20 @@ class User {
         $stmt->execute([$username]);
         $user = $stmt->fetch();
 
-        if ($user && password_verify($password, $user['password'])) {
+        if (!$user) {
+            // Verify against a dummy hash so a missing account costs the same
+            // as a wrong password. Without it the response time tells an
+            // attacker whether the username exists.
+            password_verify($password, self::DUMMY_PASSWORD_HASH);
+
+            return null;
+        }
+
+        if (password_verify($password, $user['password'])) {
             unset($user['password']);
             return $user;
         }
-        
+
         return null;
     }
 

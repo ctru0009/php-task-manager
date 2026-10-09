@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/config/headers.php';
+
 require_once __DIR__ . '/config/session.php';
 
 session_start();

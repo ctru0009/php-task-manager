@@ -11,6 +11,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-task-manager.ini
 
+COPY docker/apache-security.conf /etc/apache2/conf-enabled/zz-task-manager-security.conf
+
 WORKDIR /var/www/html
 
 COPY . /var/www/html/

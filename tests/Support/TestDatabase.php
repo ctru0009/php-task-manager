@@ -18,8 +18,11 @@ final class TestDatabase
             throw new RuntimeException('DB_NAME is not set. The test suite uses the same DB_* variables as the application.');
         }
 
-        if (!str_ends_with($name, '_test')) {
-            throw new RuntimeException(sprintf('Refusing to run tests against "%s": the database name must end with "_test".', $name));
+        if (preg_match('/^[A-Za-z0-9_]+_test$/', $name) !== 1) {
+            throw new RuntimeException(sprintf(
+                'Refusing to run tests against "%s": the database name must match ^[A-Za-z0-9_]+_test$.',
+                $name
+            ));
         }
 
         return $name;
