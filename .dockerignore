@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.vscode
+.claude
+.playwright-mcp
+.phpunit.cache
+.phpunit.result.cache
+node_modules
+vendor
