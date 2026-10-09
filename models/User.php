@@ -15,7 +15,7 @@ class User {
 
     public function register($username, $email, $password) {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        
+
         try {
             $stmt = $this->db->prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
             $stmt->execute([$username, $email, $hashedPassword]);

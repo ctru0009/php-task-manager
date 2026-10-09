@@ -87,7 +87,9 @@ docker compose exec web composer test:unit              # validation and view ru
 docker compose exec web composer test:integration       # HTTP and MySQL
 ```
 
-The suite creates its own database (`task_manager_test`, built from `schema.sql`) and truncates the tables before each test, so development data is never touched. The bootstrap refuses to run if the database name does not end in `_test`.
+The suite creates its own database (`task_manager_test`, built from `schema.sql`) and truncates the tables before each test, so development data is never touched. The bootstrap refuses to run if the database name does not match `^[A-Za-z0-9_]+_test$`.
+
+Both suites need the MySQL service and port 8123 for the built-in server, so `composer test:unit` is not database-free; it starts the same bootstrap as the integration run.
 
 | Test class | What it proves |
 |---|---|
@@ -106,13 +108,15 @@ The suite creates its own database (`task_manager_test`, built from `schema.sql`
 |---|---|---|
 | SQL injection | Every query is a PDO prepared statement with placeholders. No string-built SQL in the project. | Model tests exercise the queries; code review covers the rest. |
 | Task ownership | `Task` always filters by `user_id`, and the controllers pass the session user. Nothing is readable or writable by id alone. | `IsolationHttpTest`, `ModelTaskTest` |
-| CSRF | Token in the session, hidden field in every form, `hash_equals` comparison, 403 page on mismatch. Rotated after login. | `CsrfTest` |
+| CSRF | Token in the session, hidden field in every form, `hash_equals` comparison, 403 page on mismatch. Rotated after login, and the old token stops working. | `CsrfTest` |
 | XSS | `htmlspecialchars` on every dynamic value in the views, including class names and attribute values. | `ViewEscapingTest`, `XssTest` |
 | Session fixation | `session_regenerate_id(true)` on login and registration, `session.use_strict_mode=1`. | `SessionTest` |
-| Session cookies | HttpOnly and SameSite=Lax always, Secure through `SESSION_COOKIE_SECURE=1` on HTTPS. | `SessionTest` |
+| Session cookies | HttpOnly and SameSite=Lax always, Secure through `SESSION_COOKIE_SECURE=1` on HTTPS. | `SessionTest`, `SessionConfigTest` |
 | Password storage | `password_hash` with `PASSWORD_DEFAULT` (bcrypt) and `password_verify`; hashes are never returned by the user model. | `AuthHttpTest`, `ModelUserTest` |
-| Login errors | One generic message for a wrong password and for an unknown user, so the form does not confirm whether an account exists. | `AuthHttpTest` |
-| Bad input | Validation runs before the database: limits match the columns, invalid ids redirect, arrays are treated as empty strings. | `ValidationTest`, `LengthValidationTest`, `TaskHttpTest` |
+| Login errors | One generic message for a wrong password and for an unknown user, and an unknown user still pays the bcrypt cost, so neither the body nor the response time confirms whether an account exists. | `AuthHttpTest` (message); timing parity is code-level, not measured by a test |
+| Bad input | Validation runs before the database: limits match the columns, invalid ids redirect, arrays are treated as empty strings, NUL bytes in a password are rejected before bcrypt. | `ValidationTest`, `LengthValidationTest`, `TaskHttpTest` |
+| Response headers | X-Frame-Options: DENY, CSP frame-ancestors 'none', nosniff and Referrer-Policy on every response; PHP's session cache limiter sends no-store. | `SmokeTest` |
+| Files reachable over HTTP | `docker/apache-security.conf` denies dotfiles and dot directories, `tests/`, `docker/`, `vendor/`, `docs/`, composer files, the phpunit config and `schema.sql`, and turns directory listings off. | `DockerExposureTest` (skips where Apache is not running) |
 | Error output | `display_errors=Off` in the image, users get short generic messages, details go to `docker compose logs web`. Duplicate accounts are the only database error shown to users. | `AuthHttpTest` asserts no SQLSTATE text; manually verified for the connection failure path. |
 | Configuration | `DB_*` variables are required; a missing one stops the request with a clear message and a failed connection returns a generic 500. | Manually verified: missing variable, unreachable host. |
 
@@ -123,9 +127,11 @@ This is a portfolio project with a demo setup. What it deliberately does not do:
 - No rate limiting, account lockout or CAPTCHA on login, so brute force is possible.
 - No password reset, email verification, remember me, or account management.
 - Registration can still be used to probe whether a username or email exists, through the duplicate message. Fixing that trades away clear feedback for a legitimate user.
+- Login timing parity is implemented (a dummy bcrypt verification for unknown users) but not measured by a test: timing assertions are too flaky to be worth shipping.
 - The MySQL root account is used for simplicity, and credentials live in a local `.env`. A real deployment would use a least-privilege user and a secret manager.
+- MySQL is published on the host's 127.0.0.1 only. The dev server bind-mounts the project into the Apache docroot, so `docker/apache-security.conf` keeps `.env`, `.git`, `tests/`, `vendor/`, composer files and the schema out of HTTP; the PHP sources themselves still live under the web root, which is fine while they only define classes.
 - No custom 500 page: unexpected failures return the server's default error page while the details land in the log.
-- The test suite drives PHP's built-in server rather than Apache, so Apache-specific behaviour (rewrite rules, server headers) is not covered.
+- The test suite drives PHP's built-in server rather than Apache, so Apache-specific behaviour is not exercised, with one exception: `DockerExposureTest` probes the container's own Apache for the deny rules and skips when Apache is absent, which is the case in CI.
 - Single language, server timezone dates, no pagination on the task list.
 - Dates and the task list order rely on MySQL timestamps; tasks created within the same second are not ordered against each other.
 
@@ -135,6 +141,7 @@ This is a portfolio project with a demo setup. What it deliberately does not do:
 php-task-manager/
 ├── config/
 │   ├── database.php          # PDO connection from environment variables, fails closed
+│   ├── headers.php           # framing, sniffing and referrer headers
 │   └── session.php           # cookie flags and strict mode, loaded before session_start
 ├── controllers/
 │   ├── AuthController.php    # register, login, logout
@@ -159,6 +166,9 @@ php-task-manager/
 ├── public/css/style.css
 ├── schema.sql
 ├── index.php                 # front controller
+├── docker/
+│   ├── apache-security.conf  # denies dotfiles, .git, tests, vendor and tooling files
+│   └── php.ini               # display_errors off, errors to the log
 ├── docker-compose.yml
 └── Dockerfile
 ```

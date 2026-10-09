@@ -6,15 +6,13 @@ declare(strict_types=1);
  * User B must not be able to read, edit, delete or move user A's task by
  * changing the id in the URL, over real HTTP.
  */
-final class IsolationHttpTest extends DatabaseTestCase
+final class IsolationHttpTest extends HttpTestCase
 {
     private const TASK_INDEX = '/index.php?controller=task&action=index';
 
     public function testUserBCannotReadUserAsTask(): void
     {
-        [, , $taskId, $title] = $this->twoUsersWithATask();
-
-        $bob = $this->clientFor('bob');
+        [, $bob, $taskId, $title] = $this->twoUsersWithATask();
 
         $response = $bob->get('/index.php?controller=task&action=edit&id=' . $taskId);
 
@@ -28,9 +26,7 @@ final class IsolationHttpTest extends DatabaseTestCase
 
     public function testUserBCannotEditUserAsTask(): void
     {
-        [, , $taskId, $title] = $this->twoUsersWithATask();
-
-        $bob = $this->clientFor('bob');
+        [, $bob, $taskId, $title] = $this->twoUsersWithATask();
 
         $response = $bob->post('/index.php?controller=task&action=edit&id=' . $taskId, [
             'title' => 'Hijacked',
@@ -46,9 +42,7 @@ final class IsolationHttpTest extends DatabaseTestCase
 
     public function testUserBCannotDeleteUserAsTask(): void
     {
-        [, , $taskId, $title] = $this->twoUsersWithATask();
-
-        $bob = $this->clientFor('bob');
+        [, $bob, $taskId, $title] = $this->twoUsersWithATask();
 
         $confirmation = $bob->get('/index.php?controller=task&action=delete&id=' . $taskId);
         $this->assertSame(302, $confirmation->status, 'The delete confirmation must not expose another user\'s task.');
@@ -64,9 +58,7 @@ final class IsolationHttpTest extends DatabaseTestCase
 
     public function testUserBCannotChangeTheStatusOfUserAsTask(): void
     {
-        [, , $taskId, $title] = $this->twoUsersWithATask();
-
-        $bob = $this->clientFor('bob');
+        [, $bob, $taskId, $title] = $this->twoUsersWithATask();
 
         $response = $bob->post('/index.php?controller=task&action=updateStatus&id=' . $taskId . '&status=completed', [
             'csrf_token' => $this->csrfFor($bob),
@@ -79,9 +71,7 @@ final class IsolationHttpTest extends DatabaseTestCase
 
     public function testUserBCannotSeeUserAsTaskThroughTheStatusFilter(): void
     {
-        [, $alice, $taskId, $title] = $this->twoUsersWithATask();
-
-        $bob = $this->clientFor('bob');
+        [$alice, $bob, $taskId, $title] = $this->twoUsersWithATask();
 
         $filtered = $bob->get(self::TASK_INDEX . '&status=pending');
         $this->assertStringNotContainsString($title, $filtered->body);
@@ -94,67 +84,29 @@ final class IsolationHttpTest extends DatabaseTestCase
     private function twoUsersWithATask(): array
     {
         $alice = new HttpClient();
-        $this->register($alice, 'alice');
+        $this->registerOrFail($alice, 'alice');
 
         $title = 'Alice private task';
-        $this->createTask($alice, $title);
+        $this->createTaskOrFail($alice, $title);
 
         $bob = new HttpClient();
-        $this->register($bob, 'bob');
+        $this->registerOrFail($bob, 'bob');
 
-        $taskId = (int) TestDatabase::scalar('SELECT id FROM tasks WHERE title = ?', [$title]);
-
-        return [$alice, $alice, $taskId, $title];
+        return [$alice, $bob, $this->taskIdByTitle($title), $title];
     }
 
-    private function clientFor(string $username): HttpClient
+    private function registerOrFail(HttpClient $client, string $username): void
     {
-        $client = new HttpClient();
-        $this->login($client, $username);
-
-        return $client;
-    }
-
-    private function register(HttpClient $client, string $username): void
-    {
-        $form = $client->get('/index.php?controller=auth&action=register');
-
-        $response = $client->post('/index.php?controller=auth&action=register', [
-            'username' => $username,
-            'email' => $username . '@example.com',
-            'password' => 'secret123',
-            'confirm_password' => 'secret123',
-            'csrf_token' => $form->csrf(),
-        ]);
+        $response = $this->register($client, $username);
 
         if ($response->status !== 302) {
             $this->fail('Registration failed for ' . $username . ': ' . $response->status . ' ' . $response->body);
         }
     }
 
-    private function login(HttpClient $client, string $username): void
+    private function createTaskOrFail(HttpClient $client, string $title): void
     {
-        $form = $client->get('/index.php?controller=auth&action=login');
-
-        $response = $client->post('/index.php?controller=auth&action=login', [
-            'username' => $username,
-            'password' => 'secret123',
-            'csrf_token' => $form->csrf(),
-        ]);
-
-        if ($response->status !== 302) {
-            $this->fail('Login failed for ' . $username . ': ' . $response->status . ' ' . $response->body);
-        }
-    }
-
-    private function createTask(HttpClient $client, string $title): void
-    {
-        $response = $client->post('/index.php?controller=task&action=create', [
-            'title' => $title,
-            'description' => 'owned by one user only',
-            'priority' => 'medium',
-            'csrf_token' => $this->csrfFor($client),
-        ]);
+        $response = $this->createTask($client, $title, 'owned by one user only');
 
         if ($response->status !== 302) {
             $this->fail('Task creation failed: ' . $response->status . ' ' . $response->body);
@@ -163,6 +115,6 @@ final class IsolationHttpTest extends DatabaseTestCase
 
     private function csrfFor(HttpClient $client): string
     {
-        return $client->get('/index.php?controller=task&action=create')->csrf();
+        return $this->csrfToken($client, self::TASK_CREATE_PATH);
     }
 }

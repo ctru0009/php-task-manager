@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Task CRUD over real HTTP: create, edit, delete, the status filter and the
  * POST-only updateStatus action, plus invalid task ids.
  */
-final class TaskHttpTest extends DatabaseTestCase
+final class TaskHttpTest extends HttpTestCase
 {
     public function testCreateTaskStoresAllFieldsForTheLoggedInUser(): void
     {
@@ -71,9 +71,9 @@ final class TaskHttpTest extends DatabaseTestCase
         $client = new HttpClient();
         $this->loginAs($client);
 
-        $pendingId = $this->createTask($client, 'Alpha pending item');
-        $completedId = $this->createTask($client, 'Bravo completed item');
-        $progressId = $this->createTask($client, 'Charlie progress item');
+        $pendingId = $this->createTaskId($client, 'Alpha pending item');
+        $completedId = $this->createTaskId($client, 'Bravo completed item');
+        $progressId = $this->createTaskId($client, 'Charlie progress item');
 
         TestDatabase::exec('UPDATE tasks SET status = ? WHERE id = ?', ['completed', $completedId]);
         TestDatabase::exec('UPDATE tasks SET status = ? WHERE id = ?', ['in_progress', $progressId]);
@@ -102,7 +102,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Status target');
+        $taskId = $this->createTaskId($client, 'Status target');
 
         $token = $this->csrfTokenFrom($client, '/index.php?controller=task&action=create');
 
@@ -119,7 +119,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Status stays pending');
+        $taskId = $this->createTaskId($client, 'Status stays pending');
 
         $token = $this->csrfTokenFrom($client, '/index.php?controller=task&action=create');
 
@@ -136,7 +136,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'GET must not change me');
+        $taskId = $this->createTaskId($client, 'GET must not change me');
 
         $response = $client->get('/index.php?controller=task&action=updateStatus&id=' . $taskId . '&status=completed');
 
@@ -148,7 +148,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Editable title');
+        $taskId = $this->createTaskId($client, 'Editable title');
 
         $response = $client->get('/index.php?controller=task&action=edit&id=' . $taskId);
 
@@ -161,7 +161,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Before edit');
+        $taskId = $this->createTaskId($client, 'Before edit');
 
         $token = $this->csrfTokenFrom($client, '/index.php?controller=task&action=edit&id=' . $taskId);
 
@@ -186,7 +186,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Delete me later');
+        $taskId = $this->createTaskId($client, 'Delete me later');
 
         $response = $client->get('/index.php?controller=task&action=delete&id=' . $taskId);
 
@@ -199,7 +199,7 @@ final class TaskHttpTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Delete me now');
+        $taskId = $this->createTaskId($client, 'Delete me now');
 
         $token = $this->csrfTokenFrom($client, '/index.php?controller=task&action=delete&id=' . $taskId);
 
@@ -235,16 +235,7 @@ final class TaskHttpTest extends DatabaseTestCase
 
     private function loginAs(HttpClient $client, string $username = 'alice', string $password = 'secret123'): int
     {
-        $registerPage = $client->get('/index.php?controller=auth&action=register');
-        $this->assertSame(200, $registerPage->status, 'The registration form should be reachable.');
-
-        $response = $client->post('/index.php?controller=auth&action=register', [
-            'username' => $username,
-            'email' => $username . '@example.com',
-            'password' => $password,
-            'confirm_password' => $password,
-            'csrf_token' => $registerPage->csrf(),
-        ]);
+        $response = $this->register($client, $username, $password);
 
         $this->assertSame(302, $response->status, 'Registration should log the user in: ' . $response->body);
         $this->assertSame('/index.php?controller=task&action=index', $response->location());
@@ -257,37 +248,22 @@ final class TaskHttpTest extends DatabaseTestCase
 
     private function csrfTokenFrom(HttpClient $client, string $path): string
     {
-        $response = $client->get($path);
-        $this->assertSame(200, $response->status, sprintf('GET %s should render a form.', $path));
-
-        return $response->csrf();
+        return $this->csrfToken($client, $path);
     }
 
-    /** @param array<string, string> $fields */
+    /** @param array{title: string, description: string, priority: string} $fields */
     private function postTask(HttpClient $client, array $fields): HttpResponse
     {
-        $formPage = $client->get('/index.php?controller=task&action=create');
-        $this->assertSame(200, $formPage->status, 'The create form should be reachable.');
-
-        $fields['csrf_token'] = $formPage->csrf();
-
-        return $client->post('/index.php?controller=task&action=create', $fields);
+        return $this->createTask($client, $fields['title'], $fields['description'], $fields['priority']);
     }
 
-    private function createTask(HttpClient $client, string $title, string $priority = 'medium', string $description = ''): int
+    private function createTaskId(HttpClient $client, string $title, string $priority = 'medium', string $description = ''): int
     {
-        $response = $this->postTask($client, [
-            'title' => $title,
-            'description' => $description,
-            'priority' => $priority,
-        ]);
+        $response = $this->createTask($client, $title, $description, $priority);
 
         $this->assertRedirectsToTaskIndex($response);
 
-        $id = TestDatabase::scalar('SELECT id FROM tasks WHERE title = ?', [$title]);
-        $this->assertNotNull($id, 'Task creation should insert a row.');
-
-        return (int) $id;
+        return $this->taskIdByTitle($title);
     }
 
     private function assertRedirectsToTaskIndex(HttpResponse $response): void

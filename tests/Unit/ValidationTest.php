@@ -56,6 +56,26 @@ final class ValidationTest extends TestCase
         $this->assertSame([], task_errors('Ship it', 'Details'));
     }
 
+    public function testTheStringZeroIsNotTreatedAsMissing(): void
+    {
+        // empty('0') is true in PHP, which used to reject a title of "0" and
+        // report "Username is required" for a username of "0".
+        $this->assertSame([], task_errors('0', ''));
+        $this->assertSame([], login_errors('0', 'secret123'));
+        $this->assertSame(['Username must be at least 3 characters'], registration_errors('0', 'alice@example.com', 'secret123', 'secret123'));
+        $this->assertSame(['Password must be at least 6 characters'], registration_errors('alice', 'alice@example.com', '0', '0'));
+    }
+
+    public function testRegistrationRejectsNulBytesInThePassword(): void
+    {
+        // password_hash() throws a ValueError on a NUL byte, which used to
+        // escape the controller's catches and answer with a blank 500.
+        $this->assertSame(
+            ['Password contains characters that are not supported'],
+            registration_errors('alice', 'alice@example.com', "ab\0cdef", "ab\0cdef")
+        );
+    }
+
     public function testRegistrationRejectsOverlongInput(): void
     {
         $this->assertSame(

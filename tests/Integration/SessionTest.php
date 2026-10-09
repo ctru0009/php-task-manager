@@ -8,13 +8,8 @@ declare(strict_types=1);
  * registration, POST-only logout, and rejection of fabricated session ids
  * under session.use_strict_mode.
  */
-final class SessionTest extends DatabaseTestCase
+final class SessionTest extends HttpTestCase
 {
-    private const REGISTER_PATH = '/index.php?controller=auth&action=register';
-    private const LOGIN_PATH = '/index.php?controller=auth&action=login';
-    private const LOGOUT_PATH = '/index.php?controller=auth&action=logout';
-    private const TASK_INDEX_PATH = '/index.php?controller=task&action=index';
-
     public function testSessionCookieIsHttpOnlyAndSameSiteLax(): void
     {
         $this->createUser('alice', 'secret123');
@@ -194,9 +189,7 @@ final class SessionTest extends DatabaseTestCase
     private function postLogin(HttpClient $client, string $username, string $password, ?string $csrfToken = null): HttpResponse
     {
         if ($csrfToken === null) {
-            $formPage = $client->get(self::LOGIN_PATH);
-            $this->assertSame(200, $formPage->status, 'The login form should be reachable.');
-            $csrfToken = $formPage->csrf();
+            return $this->login($client, $username, $password);
         }
 
         return $client->post(self::LOGIN_PATH, [
@@ -208,16 +201,7 @@ final class SessionTest extends DatabaseTestCase
 
     private function registerUser(HttpClient $client, string $username = 'alice', string $password = 'secret123'): void
     {
-        $formPage = $client->get(self::REGISTER_PATH);
-        $this->assertSame(200, $formPage->status, 'The registration form should be reachable.');
-
-        $response = $client->post(self::REGISTER_PATH, [
-            'username' => $username,
-            'email' => $username . '@example.com',
-            'password' => $password,
-            'confirm_password' => $password,
-            'csrf_token' => $formPage->csrf(),
-        ]);
+        $response = $this->register($client, $username, $password);
 
         $this->assertSame(302, $response->status, 'Registration should log the user in: ' . $response->body);
     }

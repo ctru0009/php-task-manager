@@ -10,12 +10,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * validation message, and the generic login failure shared by a wrong password
  * and an unknown username.
  */
-final class AuthHttpTest extends DatabaseTestCase
+final class AuthHttpTest extends HttpTestCase
 {
-    private const REGISTER_PATH = '/index.php?controller=auth&action=register';
-    private const LOGIN_PATH = '/index.php?controller=auth&action=login';
-    private const TASK_INDEX_PATH = '/index.php?controller=task&action=index';
-
     public function testValidRegistrationStoresABcryptHashAndRedirectsToTheTaskIndex(): void
     {
         $response = $this->postRegistration(new HttpClient());
@@ -167,9 +163,6 @@ final class AuthHttpTest extends DatabaseTestCase
     /** @param array<string, string> $overrides */
     private function postRegistration(HttpClient $client, array $overrides = []): HttpResponse
     {
-        $formPage = $client->get(self::REGISTER_PATH);
-        $this->assertSame(200, $formPage->status, 'The registration form should be reachable.');
-
         $fields = array_merge([
             'username' => 'alice',
             'email' => 'alice@example.com',
@@ -177,21 +170,14 @@ final class AuthHttpTest extends DatabaseTestCase
             'confirm_password' => 'secret123',
         ], $overrides);
 
-        $fields['csrf_token'] = $formPage->csrf();
+        $fields['csrf_token'] = $this->csrfToken($client, self::REGISTER_PATH);
 
         return $client->post(self::REGISTER_PATH, $fields);
     }
 
     private function postLogin(HttpClient $client, string $username, string $password): HttpResponse
     {
-        $formPage = $client->get(self::LOGIN_PATH);
-        $this->assertSame(200, $formPage->status, 'The login form should be reachable.');
-
-        return $client->post(self::LOGIN_PATH, [
-            'username' => $username,
-            'password' => $password,
-            'csrf_token' => $formPage->csrf(),
-        ]);
+        return $this->login($client, $username, $password);
     }
 
     private function createUser(string $username, string $password): void

@@ -197,8 +197,10 @@ Test conventions: `declare(strict_types=1);`, no namespaces, class names unique 
 - MySQL 8.0 for database
 - Environment variables for database credentials
 - Volume mounting for live code updates
+- The project is mounted over the docroot, so `docker/apache-security.conf` denies dotfiles, `.git`, `tests/`, `docker/`, `vendor/`, `docs/`, composer files, the phpunit config and `schema.sql`; `DockerExposureTest` asserts those 403s against the container's own Apache. Any new file that must not be served needs a rule there.
+- `docker/php.ini` sets `display_errors=Off`; errors go to `docker compose logs web`.
 - Container names: web, db
-- Ports: 8080 (web), 3306 (db)
+- Ports: 8080 (web), 3306 on 127.0.0.1 only (db)
 
 ### Adding New Features
 1. Update database schema in `schema.sql`

@@ -33,13 +33,16 @@ class Task {
     }
 
     public function update($id, $userId, $title, $description = '', $priority = 'medium') {
-        $stmt = $this->db->prepare('UPDATE tasks SET title = ?, description = ?, priority = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+        $sql = 'UPDATE tasks SET title = ?, description = ?, priority = ?, updated_at = CURRENT_TIMESTAMP'
+            . ' WHERE id = ? AND user_id = ?';
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$title, $description, $priority, $id, $userId]);
         return $stmt->rowCount() > 0;
     }
 
     public function updateStatus($id, $userId, $status) {
-        $stmt = $this->db->prepare('UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+        $sql = 'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?';
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$status, $id, $userId]);
         return $stmt->rowCount() > 0;
     }

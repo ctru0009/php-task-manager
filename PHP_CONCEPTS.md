@@ -512,10 +512,10 @@ Superglobals are built-in variables that are always accessible.
 
 Contains information about server and execution environment.
 
-**Example from `controllers/AuthController.php:13`:**
+**Example from `controllers/AuthController.php:16-19`:**
 ```php
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    require __DIR__ . '/../views/auth/login.php';
+    require __DIR__ . '/../views/auth/register.php';
     return;
 }
 ```
@@ -552,14 +552,16 @@ $password = $_POST['password'] ?? '';
 
 Contains session variables that persist across page requests.
 
-**Example from `controllers/AuthController.php:54-55`:**
+**Example from `controllers/AuthController.php:39-40`:**
 ```php
 $_SESSION['user_id'] = $userId;
 $_SESSION['username'] = $username;
 ```
 
-**Example from `controllers/AuthController.php:91`:**
+**Example from `controllers/AuthController.php:74-77`:**
 ```php
+session_regenerate_id(true);
+csrf_rotate();
 $_SESSION['user_id'] = $user['id'];
 $_SESSION['username'] = $user['username'];
 ```
@@ -572,11 +574,16 @@ $_SESSION['username'] = $user['username'];
 
 Handle exceptions that might occur during code execution.
 
-**Example from `config/database.php:10-23`:**
+**Example from `config/database.php:10-31`:**
 ```php
+$host = self::env('DB_HOST');
+$name = self::env('DB_NAME');
+$user = self::env('DB_USER');
+$password = self::env('DB_PASSWORD');
+
 try {
-    $dsn = "mysql:host=db;dbname=task_manager;charset=utf8mb4";
-    $this->connection = new PDO($dsn, "root", "rootpass");
+    $dsn = "mysql:host=$host;dbname=$name;charset=utf8mb4";
+    $this->connection = new PDO($dsn, $user, $password);
     $this->connection->setAttribute(
         PDO::ATTR_ERRMODE,
         PDO::ERRMODE_EXCEPTION,
@@ -586,27 +593,33 @@ try {
         PDO::FETCH_ASSOC,
     );
 } catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
+    error_log('Database connection failed: ' . $e->getMessage());
+    http_response_code(500);
+    exit('Service unavailable: database connection failed.');
 }
 ```
+
+The connection details come from the environment and a missing variable stops the request before PDO is even created (see `config/database.php:33-44`), so a misconfigured deployment fails closed instead of guessing credentials.
 
 ### Throwing Exceptions
 
 Create and throw an exception to signal an error.
 
-**Example from `models/User.php:21`:**
+**Example from `models/User.php:23-28`:**
 ```php
 if ($e->getCode() == 23000) {
-    throw new Exception('Username or email already exists');
+    throw new ValidationException('Username or email already exists');
 }
 throw $e;
 ```
+
+`ValidationException` (in `includes/exceptions.php`) means "the user did something the rules do not allow", so the controller can show that message. Anything else is an unexpected failure: the controller logs it and shows a generic message instead of leaking the database error.
 
 ### PDOException
 
 Special exception type for database errors.
 
-**Example from `models/User.php:19-23`:**
+**Example from `models/User.php:18-28`:**
 ```php
 try {
     $stmt = $this->db->prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
@@ -614,22 +627,28 @@ try {
     return $this->db->lastInsertId();
 } catch (PDOException $e) {
     if ($e->getCode() == 23000) {
-        throw new Exception('Username or email already exists');
+        throw new ValidationException('Username or email already exists');
     }
     throw $e;
 }
 ```
 
-**Reference:** `models/User.php:19-23`
+**Reference:** `models/User.php:18-28`
 
-### die() or exit()
+### exit
 
-Stops script execution and outputs a message.
+Stops script execution and can output a message.
 
-**Example from `config/database.php:22`:**
+**Example from `config/database.php:26-29`:**
 ```php
-die("Database connection failed: " . $e->getMessage());
+} catch (PDOException $e) {
+    error_log('Database connection failed: ' . $e->getMessage());
+    http_response_code(500);
+    exit('Service unavailable: database connection failed.');
+}
 ```
+
+The message the visitor sees is generic; the PDO detail goes to the error log. `die()` with a raw exception message used to print the host, database name and driver into the browser.
 
 ---
 
@@ -639,7 +658,7 @@ die("Database connection failed: " . $e->getMessage());
 
 Send raw HTTP headers to the browser.
 
-**Example from `controllers/AuthController.php:56`:**
+**Example from `controllers/AuthController.php:78-79`:**
 ```php
 header('Location: /index.php?controller=task&action=index');
 exit;
@@ -653,7 +672,7 @@ Common uses:
 
 Stops script execution immediately.
 
-**Example from `controllers/AuthController.php:57`:**
+**Example from `controllers/TaskController.php`:**
 ```php
 header('Location: /index.php?controller=task&action=index');
 exit;
@@ -665,7 +684,7 @@ Always use `exit` after `header('Location: ...')` to prevent further code execut
 
 Check the HTTP method used for the request.
 
-**Example from `controllers/AuthController.php:13`:**
+**Example from `controllers/AuthController.php:54-57`:**
 ```php
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     require __DIR__ . '/../views/auth/login.php';
@@ -681,43 +700,75 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 Start a new or resume existing session. Must be called before any output.
 
-**Example from `index.php:3`:**
+**Example from `index.php:5-7`:**
 ```php
+require_once __DIR__ . '/config/session.php';
+
 session_start();
 ```
+
+`config/session.php` sets the cookie flags before the session starts; `session_set_cookie_params()` only affects the session that starts afterwards.
 
 ### session_destroy()
 
 Destroys all session data.
 
-**Example from `controllers/AuthController.php:102`:**
+**Example from `controllers/AuthController.php:86-113`:**
 ```php
 public function logout() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        exit('Method Not Allowed');
+    }
+
+    csrf_require();
+
+    $_SESSION = [];
+
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', [
+            'expires' => time() - 42000,
+            'path' => $params['path'],
+            'domain' => $params['domain'],
+            'secure' => $params['secure'],
+            'httponly' => $params['httponly'],
+            'samesite' => $params['samesite'],
+        ]);
+    }
+
     session_destroy();
+
     header('Location: /index.php?controller=auth&action=login');
     exit;
 }
 ```
 
+`session_destroy()` alone removes the server-side record but leaves the cookie in the browser and `$_SESSION` populated for the rest of the request, so a full logout also empties the array and expires the cookie.
+
 ### Storing Session Data
 
 Set values in the `$_SESSION` superglobal.
 
-**Example from `controllers/AuthController.php:54-55`:**
+**Example from `controllers/AuthController.php:76-77`:**
 ```php
-$_SESSION['user_id'] = $userId;
-$_SESSION['username'] = $username;
+$_SESSION['user_id'] = $user['id'];
+$_SESSION['username'] = $user['username'];
 ```
 
 ### Accessing Session Data
 
 Read values from `$_SESSION`.
 
-**Example from `controllers/AuthController.php:91`:**
+**Example from `controllers/TaskController.php:19-21`:**
 ```php
-$_SESSION['user_id'] = $user['id'];
-$_SESSION['username'] = $user['username'];
+$userId = $_SESSION['user_id'];
+$statusFilter = status_filter($_GET['status'] ?? null);
+$tasks = $this->task->getByUserId($userId, $statusFilter);
 ```
+
+The session is the only place the current user id comes from, so a visitor cannot ask for another user's tasks by changing a request parameter.
 
 ---
 

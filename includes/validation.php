@@ -26,7 +26,7 @@ function registration_errors(string $username, string $email, string $password, 
 {
     $errors = [];
 
-    if (empty($username)) {
+    if ($username === '') {
         $errors[] = 'Username is required';
     } elseif (strlen($username) < 3) {
         $errors[] = 'Username must be at least 3 characters';
@@ -34,7 +34,7 @@ function registration_errors(string $username, string $email, string $password, 
         $errors[] = 'Username must be at most 50 characters';
     }
 
-    if (empty($email)) {
+    if ($email === '') {
         $errors[] = 'Email is required';
     } elseif (strlen($email) > 100) {
         $errors[] = 'Email must be at most 100 characters';
@@ -42,12 +42,16 @@ function registration_errors(string $username, string $email, string $password, 
         $errors[] = 'Invalid email format';
     }
 
-    if (empty($password)) {
+    if ($password === '') {
         $errors[] = 'Password is required';
     } elseif (strlen($password) < 6) {
         $errors[] = 'Password must be at least 6 characters';
     } elseif (strlen($password) > 72) {
         $errors[] = 'Password must be at most 72 characters';
+    } elseif (str_contains($password, "\0")) {
+        // password_hash() throws on a NUL byte for bcrypt, so reject it here
+        // instead of dying with an uncaught ValueError.
+        $errors[] = 'Password contains characters that are not supported';
     }
 
     if ($password !== $confirmPassword) {
@@ -62,11 +66,11 @@ function login_errors(string $username, string $password): array
 {
     $errors = [];
 
-    if (empty($username)) {
+    if ($username === '') {
         $errors[] = 'Username is required';
     }
 
-    if (empty($password)) {
+    if ($password === '') {
         $errors[] = 'Password is required';
     }
 
@@ -78,7 +82,7 @@ function task_errors(string $title, string $description): array
 {
     $errors = [];
 
-    if (empty($title)) {
+    if ($title === '') {
         $errors[] = 'Title is required';
     } elseif (strlen($title) > 255) {
         $errors[] = 'Title must be at most 255 characters';

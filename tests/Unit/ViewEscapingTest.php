@@ -139,6 +139,59 @@ final class ViewEscapingTest extends TestCase
         $this->assertStringNotContainsString('<script', $html);
     }
 
+    public function testRegistrationFormEscapesHostileValuesAndErrors(): void
+    {
+        $html = $this->renderView('views/auth/register.php', [
+            'errors' => ['"><script>alert(register-error)</script>'],
+            'username' => '"><script>alert(register-username)</script>',
+            'email' => '"><script>alert(register-email)</script>',
+        ]);
+
+        $this->assertStringContainsString('&lt;script&gt;alert(register-username)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(register-email)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(register-error)&lt;/script&gt;', $html);
+
+        $this->assertStringNotContainsString('"><script>alert(register-username)</script>', $html);
+        $this->assertStringNotContainsString('"><script>alert(register-email)</script>', $html);
+        $this->assertStringNotContainsString('"><script>alert(register-error)</script>', $html);
+        $this->assertStringNotContainsString('<script', $html);
+    }
+
+    public function testLoginFormEscapesHostileUsernameAndErrors(): void
+    {
+        $html = $this->renderView('views/auth/login.php', [
+            'errors' => ['"><script>alert(login-error)</script>'],
+            'username' => '"><script>alert(login-username)</script>',
+        ]);
+
+        $this->assertStringContainsString('&lt;script&gt;alert(login-username)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(login-error)&lt;/script&gt;', $html);
+
+        $this->assertStringNotContainsString('"><script>alert(login-username)</script>', $html);
+        $this->assertStringNotContainsString('"><script>alert(login-error)</script>', $html);
+        $this->assertStringNotContainsString('<script', $html);
+    }
+
+    public function testTaskCreateFormEscapesHostileValuesAndErrors(): void
+    {
+        $html = $this->renderView('views/task/create.php', [
+            'errors' => ['"><script>alert(create-error)</script>'],
+            'title' => '"><script>alert(create-title)</script>',
+            'description' => '"><img src=x onerror=alert(create-description)>',
+            'priority' => 'low',
+        ]);
+
+        $this->assertStringContainsString('value="&quot;&gt;&lt;script&gt;alert(create-title)&lt;/script&gt;"', $html);
+        $this->assertStringContainsString('&lt;img src=x onerror=alert(create-description)&gt;', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(create-error)&lt;/script&gt;', $html);
+
+        $this->assertStringNotContainsString('"><script>alert(create-title)</script>', $html);
+        $this->assertStringNotContainsString('"><img src=x onerror=alert(create-description)>', $html);
+        $this->assertStringNotContainsString('"><script>alert(create-error)</script>', $html);
+        $this->assertStringNotContainsString('<script', $html);
+        $this->assertStringNotContainsString('<img src=x onerror', $html);
+    }
+
     /**
      * Render a view the way a controller does: the view variables live in this
      * scope, and everything the view prints is captured instead of emitted.

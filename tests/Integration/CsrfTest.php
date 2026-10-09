@@ -279,6 +279,29 @@ final class CsrfTest extends DatabaseTestCase
         $this->assertSame(200, $client->get(self::TASK_INDEX_PATH)->status);
     }
 
+    public function testCsrfTokenRotatesOnLoginAndTheOldTokenStopsWorking(): void
+    {
+        $registration = new HttpClient();
+        $this->loginAs($registration);
+
+        $client = new HttpClient();
+        $before = $this->csrfTokenFrom($client, self::LOGIN_PATH);
+
+        $login = $client->post(self::LOGIN_PATH, [
+            'username' => 'alice',
+            'password' => 'secret123',
+            'csrf_token' => $before,
+        ]);
+        $this->assertRedirectsToTaskIndex($login);
+
+        $after = $this->csrfTokenFrom($client, self::TASK_INDEX_PATH);
+        $this->assertNotSame($before, $after, 'Login must rotate the CSRF token.');
+
+        $stale = $client->post(self::LOGOUT_PATH, ['csrf_token' => $before]);
+        $this->assertCsrfRejected($stale);
+        $this->assertSame(200, $client->get(self::TASK_INDEX_PATH)->status, 'A stale token must not end the session.');
+    }
+
     private function loginAs(HttpClient $client, string $username = 'alice', string $password = 'secret123'): int
     {
         $registerPage = $client->get(self::REGISTER_PATH);

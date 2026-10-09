@@ -6,13 +6,13 @@ declare(strict_types=1);
  * The edit form must preselect the option matching the task's stored
  * priority, parsed out of the <select name="priority"> block.
  */
-final class EditFormTest extends DatabaseTestCase
+final class EditFormTest extends HttpTestCase
 {
     public function testLowPriorityTaskIsPreselectedInTheEditForm(): void
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'Low priority task', 'low');
+        $taskId = $this->createTaskId($client, 'Low priority task', 'low');
 
         $response = $client->get('/index.php?controller=task&action=edit&id=' . $taskId);
         $this->assertSame(200, $response->status);
@@ -28,7 +28,7 @@ final class EditFormTest extends DatabaseTestCase
     {
         $client = new HttpClient();
         $this->loginAs($client);
-        $taskId = $this->createTask($client, 'High priority task', 'high');
+        $taskId = $this->createTaskId($client, 'High priority task', 'high');
 
         $response = $client->get('/index.php?controller=task&action=edit&id=' . $taskId);
         $this->assertSame(200, $response->status);
@@ -71,16 +71,7 @@ final class EditFormTest extends DatabaseTestCase
 
     private function loginAs(HttpClient $client, string $username = 'alice', string $password = 'secret123'): int
     {
-        $registerPage = $client->get('/index.php?controller=auth&action=register');
-        $this->assertSame(200, $registerPage->status, 'The registration form should be reachable.');
-
-        $response = $client->post('/index.php?controller=auth&action=register', [
-            'username' => $username,
-            'email' => $username . '@example.com',
-            'password' => $password,
-            'confirm_password' => $password,
-            'csrf_token' => $registerPage->csrf(),
-        ]);
+        $response = $this->register($client, $username, $password);
 
         $this->assertSame(302, $response->status, 'Registration should log the user in: ' . $response->body);
 
@@ -90,23 +81,12 @@ final class EditFormTest extends DatabaseTestCase
         return (int) $userId;
     }
 
-    private function createTask(HttpClient $client, string $title, string $priority): int
+    private function createTaskId(HttpClient $client, string $title, string $priority): int
     {
-        $formPage = $client->get('/index.php?controller=task&action=create');
-        $this->assertSame(200, $formPage->status, 'The create form should be reachable.');
-
-        $response = $client->post('/index.php?controller=task&action=create', [
-            'title' => $title,
-            'description' => '',
-            'priority' => $priority,
-            'csrf_token' => $formPage->csrf(),
-        ]);
+        $response = $this->createTask($client, $title, '', $priority);
 
         $this->assertSame(302, $response->status, 'Task creation should succeed: ' . $response->body);
 
-        $id = TestDatabase::scalar('SELECT id FROM tasks WHERE title = ?', [$title]);
-        $this->assertNotNull($id, 'Task creation should insert a row.');
-
-        return (int) $id;
+        return $this->taskIdByTitle($title);
     }
 }

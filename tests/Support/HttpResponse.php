@@ -43,7 +43,9 @@ final class HttpResponse
 
     public function csrf(): string
     {
-        if (preg_match('/name="csrf_token"\s+value="([^"]+)"/', $this->body, $matches) !== 1) {
+        // Tolerant on purpose: any attribute order or extra attributes on the
+        // hidden input must not break the whole suite with a harness error.
+        if (preg_match('/<input[^>]*\bname="csrf_token"[^>]*\bvalue="([^"]*)"/', $this->body, $matches) !== 1) {
             throw new RuntimeException('No csrf_token field found in the response body.');
         }
 

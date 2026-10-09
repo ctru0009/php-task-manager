@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Round trip through the real application and MySQL: text the user stores must
  * come back HTML-escaped on the task index and edit pages, never as a live tag.
  */
-final class XssTest extends DatabaseTestCase
+final class XssTest extends HttpTestCase
 {
     private const TITLE = '<script>alert(1)</script>';
     private const DESCRIPTION = '<img src=x onerror=alert(1)>';
@@ -48,46 +48,22 @@ final class XssTest extends DatabaseTestCase
      */
     private function registerLoginAndCreateHostileTask(HttpClient $client): int
     {
-        $registerForm = $client->get('/index.php?controller=auth&action=register');
-
-        $register = $client->post('/index.php?controller=auth&action=register', [
-            'username' => 'xssuser',
-            'email' => 'xssuser@example.com',
-            'password' => self::PASSWORD,
-            'confirm_password' => self::PASSWORD,
-            'csrf_token' => $registerForm->csrf(),
-        ]);
+        $register = $this->register($client, 'xssuser', self::PASSWORD);
 
         $this->assertSame(302, $register->status);
         $this->assertSame('/index.php?controller=task&action=index', $register->location());
 
         // Login rotates the token, so take a fresh one from a page fetched
         // after logging in.
-        $loginForm = $client->get('/index.php?controller=auth&action=login');
-
-        $login = $client->post('/index.php?controller=auth&action=login', [
-            'username' => 'xssuser',
-            'password' => self::PASSWORD,
-            'csrf_token' => $loginForm->csrf(),
-        ]);
+        $login = $this->login($client, 'xssuser', self::PASSWORD);
 
         $this->assertSame(302, $login->status);
         $this->assertSame('/index.php?controller=task&action=index', $login->location());
 
-        $createForm = $client->get('/index.php?controller=task&action=create');
-
-        $create = $client->post('/index.php?controller=task&action=create', [
-            'title' => self::TITLE,
-            'description' => self::DESCRIPTION,
-            'priority' => 'medium',
-            'csrf_token' => $createForm->csrf(),
-        ]);
+        $create = $this->createTask($client, self::TITLE, self::DESCRIPTION);
 
         $this->assertSame(302, $create->status);
 
-        $taskId = TestDatabase::scalar('SELECT id FROM tasks WHERE title = ? ORDER BY id DESC LIMIT 1', [self::TITLE]);
-        $this->assertNotNull($taskId, 'The hostile task should have been stored.');
-
-        return (int) $taskId;
+        return $this->taskIdByTitle(self::TITLE);
     }
 }

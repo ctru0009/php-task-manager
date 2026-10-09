@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Boundary tests for the length limits: task titles at 255/256, task
  * descriptions at 65535/65536 and the registration field limits.
  */
-final class LengthValidationTest extends DatabaseTestCase
+final class LengthValidationTest extends HttpTestCase
 {
     public function testTaskTitleOf256CharactersIsRejected(): void
     {
@@ -100,16 +100,7 @@ final class LengthValidationTest extends DatabaseTestCase
 
     private function loginAs(HttpClient $client, string $username = 'alice', string $password = 'secret123'): int
     {
-        $registerPage = $client->get('/index.php?controller=auth&action=register');
-        $this->assertSame(200, $registerPage->status, 'The registration form should be reachable.');
-
-        $response = $client->post('/index.php?controller=auth&action=register', [
-            'username' => $username,
-            'email' => $username . '@example.com',
-            'password' => $password,
-            'confirm_password' => $password,
-            'csrf_token' => $registerPage->csrf(),
-        ]);
+        $response = $this->register($client, $username, $password);
 
         $this->assertSame(302, $response->status, 'Registration should log the user in: ' . $response->body);
         $this->assertSame('/index.php?controller=task&action=index', $response->location());
@@ -122,28 +113,11 @@ final class LengthValidationTest extends DatabaseTestCase
 
     private function postRegistration(HttpClient $client, string $username, string $email, string $password): HttpResponse
     {
-        $formPage = $client->get('/index.php?controller=auth&action=register');
-        $this->assertSame(200, $formPage->status, 'The registration form should be reachable.');
-
-        return $client->post('/index.php?controller=auth&action=register', [
-            'username' => $username,
-            'email' => $email,
-            'password' => $password,
-            'confirm_password' => $password,
-            'csrf_token' => $formPage->csrf(),
-        ]);
+        return $this->register($client, $username, $password, $email);
     }
 
     private function postTask(HttpClient $client, string $title, string $description, string $priority): HttpResponse
     {
-        $formPage = $client->get('/index.php?controller=task&action=create');
-        $this->assertSame(200, $formPage->status, 'The create form should be reachable.');
-
-        return $client->post('/index.php?controller=task&action=create', [
-            'title' => $title,
-            'description' => $description,
-            'priority' => $priority,
-            'csrf_token' => $formPage->csrf(),
-        ]);
+        return $this->createTask($client, $title, $description, $priority);
     }
 }
