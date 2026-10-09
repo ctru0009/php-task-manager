@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../includes/validation.php';
 require_once __DIR__ . '/../models/User.php';
 
 class AuthController {
@@ -15,34 +16,12 @@ class AuthController {
             return;
         }
 
-        $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $confirmPassword = $_POST['confirm_password'] ?? '';
+        $username = form_string($_POST['username'] ?? '');
+        $email = form_string($_POST['email'] ?? '');
+        $password = form_string($_POST['password'] ?? '', false);
+        $confirmPassword = form_string($_POST['confirm_password'] ?? '', false);
 
-        $errors = [];
-
-        if (empty($username)) {
-            $errors[] = 'Username is required';
-        } elseif (strlen($username) < 3) {
-            $errors[] = 'Username must be at least 3 characters';
-        }
-
-        if (empty($email)) {
-            $errors[] = 'Email is required';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Invalid email format';
-        }
-
-        if (empty($password)) {
-            $errors[] = 'Password is required';
-        } elseif (strlen($password) < 6) {
-            $errors[] = 'Password must be at least 6 characters';
-        }
-
-        if ($password !== $confirmPassword) {
-            $errors[] = 'Passwords do not match';
-        }
+        $errors = registration_errors($username, $email, $password, $confirmPassword);
 
         if (!empty($errors)) {
             require __DIR__ . '/../views/auth/register.php';
@@ -67,18 +46,10 @@ class AuthController {
             return;
         }
 
-        $username = trim($_POST['username'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $username = form_string($_POST['username'] ?? '');
+        $password = form_string($_POST['password'] ?? '', false);
 
-        $errors = [];
-
-        if (empty($username)) {
-            $errors[] = 'Username is required';
-        }
-
-        if (empty($password)) {
-            $errors[] = 'Password is required';
-        }
+        $errors = login_errors($username, $password);
 
         if (!empty($errors)) {
             require __DIR__ . '/../views/auth/login.php';

@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../includes/validation.php';
 require_once __DIR__ . '/../models/Task.php';
 
 class TaskController {
@@ -16,7 +17,7 @@ class TaskController {
 
     public function index() {
         $userId = $_SESSION['user_id'];
-        $statusFilter = $_GET['status'] ?? null;
+        $statusFilter = status_filter($_GET['status'] ?? null);
         $tasks = $this->task->getByUserId($userId, $statusFilter);
         require __DIR__ . '/../views/task/index.php';
     }
@@ -28,19 +29,11 @@ class TaskController {
         }
 
         $userId = $_SESSION['user_id'];
-        $title = trim($_POST['title'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $priority = $_POST['priority'] ?? 'medium';
+        $title = form_string($_POST['title'] ?? '');
+        $description = form_string($_POST['description'] ?? '');
+        $priority = normalize_priority($_POST['priority'] ?? 'medium');
 
-        $errors = [];
-
-        if (empty($title)) {
-            $errors[] = 'Title is required';
-        }
-
-        if (!in_array($priority, ['low', 'medium', 'high'])) {
-            $priority = 'medium';
-        }
+        $errors = task_errors($title, $description);
 
         if (!empty($errors)) {
             require __DIR__ . '/../views/task/create.php';
@@ -54,9 +47,9 @@ class TaskController {
 
     public function edit() {
         $userId = $_SESSION['user_id'];
-        $id = $_GET['id'] ?? null;
+        $id = task_id($_GET['id'] ?? null);
 
-        if (!$id) {
+        if ($id === null) {
             header('Location: /index.php?controller=task&action=index');
             exit;
         }
@@ -69,19 +62,11 @@ class TaskController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $title = trim($_POST['title'] ?? '');
-            $description = trim($_POST['description'] ?? '');
-            $priority = $_POST['priority'] ?? 'medium';
+            $title = form_string($_POST['title'] ?? '');
+            $description = form_string($_POST['description'] ?? '');
+            $priority = normalize_priority($_POST['priority'] ?? 'medium');
 
-            $errors = [];
-
-            if (empty($title)) {
-                $errors[] = 'Title is required';
-            }
-
-            if (!in_array($priority, ['low', 'medium', 'high'])) {
-                $priority = 'medium';
-            }
+            $errors = task_errors($title, $description);
 
             if (!empty($errors)) {
                 require __DIR__ . '/../views/task/edit.php';
@@ -98,9 +83,9 @@ class TaskController {
 
     public function delete() {
         $userId = $_SESSION['user_id'];
-        $id = $_GET['id'] ?? null;
+        $id = task_id($_GET['id'] ?? null);
 
-        if (!$id) {
+        if ($id === null) {
             header('Location: /index.php?controller=task&action=index');
             exit;
         }
@@ -122,15 +107,10 @@ class TaskController {
 
     public function updateStatus() {
         $userId = $_SESSION['user_id'];
-        $id = $_GET['id'] ?? null;
+        $id = task_id($_GET['id'] ?? null);
         $status = $_GET['status'] ?? null;
 
-        if (!$id || !$status) {
-            header('Location: /index.php?controller=task&action=index');
-            exit;
-        }
-
-        if (in_array($status, ['pending', 'in_progress', 'completed'])) {
+        if ($id !== null && valid_status($status)) {
             $this->task->updateStatus($id, $userId, $status);
         }
 

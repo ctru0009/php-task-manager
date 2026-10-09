@@ -1,0 +1,114 @@
+<?php
+
+declare(strict_types=1);
+
+use PHPUnit\Framework\TestCase;
+
+final class ValidationTest extends TestCase
+{
+    public function testRegistrationAcceptsValidInput(): void
+    {
+        $this->assertSame([], registration_errors('alice', 'alice@example.com', 'secret123', 'secret123'));
+    }
+
+    public function testRegistrationRequiresEveryField(): void
+    {
+        $this->assertSame([
+            'Username is required',
+            'Email is required',
+            'Password is required',
+        ], registration_errors('', '', '', ''));
+    }
+
+    public function testRegistrationRejectsAShortUsername(): void
+    {
+        $this->assertSame(['Username must be at least 3 characters'], registration_errors('al', 'al@example.com', 'secret123', 'secret123'));
+    }
+
+    public function testRegistrationRejectsAnInvalidEmail(): void
+    {
+        $this->assertSame(['Invalid email format'], registration_errors('alice', 'not-an-email', 'secret123', 'secret123'));
+    }
+
+    public function testRegistrationRejectsAShortPassword(): void
+    {
+        $this->assertSame(['Password must be at least 6 characters'], registration_errors('alice', 'alice@example.com', '12345', '12345'));
+    }
+
+    public function testRegistrationRejectsAMismatchedConfirmation(): void
+    {
+        $this->assertSame(['Passwords do not match'], registration_errors('alice', 'alice@example.com', 'secret123', 'secret124'));
+    }
+
+    public function testLoginRequiresBothFields(): void
+    {
+        $this->assertSame([
+            'Username is required',
+            'Password is required',
+        ], login_errors('', ''));
+
+        $this->assertSame([], login_errors('alice', 'secret123'));
+    }
+
+    public function testTaskRequiresATitle(): void
+    {
+        $this->assertSame(['Title is required'], task_errors('', ''));
+        $this->assertSame([], task_errors('Ship it', 'Details'));
+    }
+
+    public function testPriorityFallsBackToMedium(): void
+    {
+        $this->assertSame('low', normalize_priority('low'));
+        $this->assertSame('medium', normalize_priority('medium'));
+        $this->assertSame('high', normalize_priority('high'));
+        $this->assertSame('medium', normalize_priority('urgent'));
+        $this->assertSame('medium', normalize_priority('LOW'));
+        $this->assertSame('medium', normalize_priority(null));
+        $this->assertSame('medium', normalize_priority(['high']));
+    }
+
+    public function testStatusValidation(): void
+    {
+        $this->assertTrue(valid_status('pending'));
+        $this->assertTrue(valid_status('in_progress'));
+        $this->assertTrue(valid_status('completed'));
+        $this->assertFalse(valid_status('bogus'));
+        $this->assertFalse(valid_status(['pending']));
+        $this->assertFalse(valid_status(null));
+    }
+
+    public function testStatusFilterIgnoresUnknownValues(): void
+    {
+        $this->assertSame('pending', status_filter('pending'));
+        $this->assertNull(status_filter('bogus'));
+        $this->assertNull(status_filter(['pending']));
+        $this->assertNull(status_filter(null));
+    }
+
+    public function testTaskIdAcceptsPositiveIntegers(): void
+    {
+        $this->assertSame(5, task_id('5'));
+        $this->assertSame(5, task_id(5));
+        $this->assertSame(7, task_id('007'));
+    }
+
+    public function testTaskIdRejectsEverythingElse(): void
+    {
+        $this->assertNull(task_id(null));
+        $this->assertNull(task_id('abc'));
+        $this->assertNull(task_id('1.5'));
+        $this->assertNull(task_id('0'));
+        $this->assertNull(task_id('-1'));
+        $this->assertNull(task_id('5abc'));
+        $this->assertNull(task_id(['5']));
+        $this->assertNull(task_id(0));
+    }
+
+    public function testFormStringHandlesArraysAndWhitespace(): void
+    {
+        $this->assertSame('alice', form_string('  alice  '));
+        $this->assertSame('secret ', form_string('secret ', false));
+        $this->assertSame('', form_string(['nested']));
+        $this->assertSame('', form_string(null));
+    }
+}
