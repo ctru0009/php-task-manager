@@ -246,6 +246,14 @@ body::after {
   z-index: 1;
 }
 
+/* Logout is a POST form now, so its trigger is a button that has to look
+   exactly like the other nav links. */
+button.nav-link {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .nav-logout {
   border-color: rgba(255, 0, 85, 0.3);
 }
@@ -771,7 +779,7 @@ body::after {
   flex-wrap: wrap;
 }
 
-button[type="submit"] {
+.form-actions button[type="submit"] {
   padding: 1rem 2rem;
   font-size: 1rem;
 }

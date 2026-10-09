@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/validation.php';
 require_once __DIR__ . '/../models/Task.php';
 
@@ -27,6 +28,8 @@ class TaskController {
             require __DIR__ . '/../views/task/create.php';
             return;
         }
+
+        csrf_require();
 
         $userId = $_SESSION['user_id'];
         $title = form_string($_POST['title'] ?? '');
@@ -62,6 +65,8 @@ class TaskController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            csrf_require();
+
             $title = form_string($_POST['title'] ?? '');
             $description = form_string($_POST['description'] ?? '');
             $priority = normalize_priority($_POST['priority'] ?? 'medium');
@@ -91,6 +96,7 @@ class TaskController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            csrf_require();
             $this->task->delete($id, $userId);
             header('Location: /index.php?controller=task&action=index');
             exit;
@@ -106,6 +112,14 @@ class TaskController {
     }
 
     public function updateStatus() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            exit('Method Not Allowed');
+        }
+
+        csrf_require();
+
         $userId = $_SESSION['user_id'];
         $id = task_id($_GET['id'] ?? null);
         $status = $_GET['status'] ?? null;

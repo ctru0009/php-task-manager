@@ -12,6 +12,7 @@
     <?php endif; ?>
 
     <form method="POST" action="/index.php?controller=auth&action=login">
+        <?php echo csrf_field(); ?>
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($username ?? ''); ?>" required placeholder="Enter your username">

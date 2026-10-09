@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/exceptions.php';
 require_once __DIR__ . '/../includes/validation.php';
 require_once __DIR__ . '/../models/User.php';
@@ -17,6 +18,8 @@ class AuthController {
             return;
         }
 
+        csrf_require();
+
         $username = form_string($_POST['username'] ?? '');
         $email = form_string($_POST['email'] ?? '');
         $password = form_string($_POST['password'] ?? '', false);
@@ -32,6 +35,7 @@ class AuthController {
         try {
             $userId = $this->user->register($username, $email, $password);
             session_regenerate_id(true);
+            csrf_rotate();
             $_SESSION['user_id'] = $userId;
             $_SESSION['username'] = $username;
             header('Location: /index.php?controller=task&action=index');
@@ -52,6 +56,8 @@ class AuthController {
             return;
         }
 
+        csrf_require();
+
         $username = form_string($_POST['username'] ?? '');
         $password = form_string($_POST['password'] ?? '', false);
 
@@ -66,6 +72,7 @@ class AuthController {
 
         if ($user) {
             session_regenerate_id(true);
+            csrf_rotate();
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             header('Location: /index.php?controller=task&action=index');
@@ -77,6 +84,14 @@ class AuthController {
     }
 
     public function logout() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            exit('Method Not Allowed');
+        }
+
+        csrf_require();
+
         $_SESSION = [];
 
         if (ini_get('session.use_cookies')) {

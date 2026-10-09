@@ -36,13 +36,22 @@
                     <a href="/index.php?controller=task&action=edit&id=<?php echo (int) $task['id']; ?>" class="btn btn-secondary">Edit</a>
                     <a href="/index.php?controller=task&action=delete&id=<?php echo (int) $task['id']; ?>" class="btn btn-danger">Delete</a>
                     <?php if ($task['status'] !== 'pending'): ?>
-                        <a href="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=pending" class="btn btn-outline">Pending</a>
+                        <form method="POST" action="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=pending">
+                            <?php echo csrf_field(); ?>
+                            <button type="submit" class="btn btn-outline">Pending</button>
+                        </form>
                     <?php endif; ?>
                     <?php if ($task['status'] !== 'in_progress'): ?>
-                        <a href="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=in_progress" class="btn btn-outline">In Progress</a>
+                        <form method="POST" action="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=in_progress">
+                            <?php echo csrf_field(); ?>
+                            <button type="submit" class="btn btn-outline">In Progress</button>
+                        </form>
                     <?php endif; ?>
                     <?php if ($task['status'] !== 'completed'): ?>
-                        <a href="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=completed" class="btn btn-outline">Completed</a>
+                        <form method="POST" action="/index.php?controller=task&action=updateStatus&id=<?php echo (int) $task['id']; ?>&status=completed">
+                            <?php echo csrf_field(); ?>
+                            <button type="submit" class="btn btn-outline">Completed</button>
+                        </form>
                     <?php endif; ?>
                 </div>
             </div>

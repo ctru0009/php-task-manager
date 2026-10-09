@@ -16,6 +16,7 @@
     </div>
 
     <form method="POST" action="/index.php?controller=task&action=delete&id=<?php echo (int) $task['id']; ?>">
+        <?php echo csrf_field(); ?>
         <div class="form-actions">
             <button type="submit" class="btn btn-danger">Yes, Delete Task</button>
             <a href="/index.php?controller=task&action=index" class="btn btn-secondary">Cancel</a>

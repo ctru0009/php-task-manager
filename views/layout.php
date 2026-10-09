@@ -16,7 +16,10 @@
                 <div class="nav-menu">
                     <span class="nav-user">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
                     <a href="/index.php?controller=task&action=index" class="nav-link">Tasks</a>
-                    <a href="/index.php?controller=auth&action=logout" class="nav-link nav-logout">Logout</a>
+                    <form method="POST" action="/index.php?controller=auth&action=logout">
+                        <?php echo csrf_field(); ?>
+                        <button type="submit" class="nav-link nav-logout"><span>Logout</span></button>
+                    </form>
                 </div>
             <?php else: ?>
                 <div class="nav-menu">

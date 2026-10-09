@@ -14,6 +14,7 @@
     <?php endif; ?>
 
     <form method="POST" action="/index.php?controller=task&action=create">
+        <?php echo csrf_field(); ?>
         <div class="form-group">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="<?php echo htmlspecialchars($title ?? ''); ?>" required placeholder="Enter task title">
