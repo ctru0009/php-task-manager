@@ -38,7 +38,24 @@ docker-compose down -v
 ```
 
 ### Testing
-This project uses plain PHP without a testing framework. Manual testing is performed through the web interface at http://localhost:8080 (Docker) or http://localhost/ (local).
+This project uses PHPUnit 11. There is no application autoloader: `tests/bootstrap.php` loads `config/database.php`, `models/*.php` and `includes/*.php` with `require_once`.
+
+```bash
+# Run the whole suite (inside the web container, from the project root)
+docker compose exec web composer install
+docker compose exec web php vendor/bin/phpunit
+
+# Suites
+docker compose exec web composer test:unit           # tests/Unit: validation rules, view escaping
+docker compose exec web composer test:integration    # tests/Integration: HTTP and MySQL
+
+# Syntax check a single file
+docker run --rm -v "$PWD":/app -w /app php:8.2-cli php -l path/to/file.php
+```
+
+Integration tests hit a real MySQL database (`task_manager_test` by default, forced by `phpunit.xml.dist`) and drive the application through PHP's built-in server. `tests/Support/DatabaseTestCase.php` truncates the tables before each test. A database name that does not end in `_test` is refused.
+
+Test conventions: `declare(strict_types=1);`, no namespaces, class names unique across the suite, and every POST in a test needs the CSRF token from a page fetched in the same session (tokens rotate after login).
 
 ## Code Style Guidelines
 
@@ -113,7 +130,7 @@ This project uses plain PHP without a testing framework. Manual testing is perfo
 - **Authentication**: Check `$_SESSION['user_id']` exists before allowing access to protected pages
 - **Input Validation**: Trim user input, check for empty values, validate email format, enforce length limits
 - **Redirects**: Always use `header('Location: ...')` followed by `exit;` to prevent code execution
-- **CSRF Protection**: Not currently implemented, but recommended for production
+- **CSRF Protection**: Every state-changing request is POST and includes `csrf_field()` in its form. Controllers call `csrf_require()` before touching data; the token lives in the session and is checked with `hash_equals`. It rotates after login and registration.
 
 ### Controller Pattern
 - Controllers handle HTTP requests and orchestrate business logic
@@ -185,18 +202,21 @@ This project uses plain PHP without a testing framework. Manual testing is perfo
 
 ### Adding New Features
 1. Update database schema in `schema.sql`
-2. Create model in `models/` directory following existing patterns
-3. Create controller in `controllers/` directory
-4. Create view(s) in `views/` directory
-5. Add route handling in `index.php`
-6. Update CSS in `public/css/style.css` if needed
-7. Test both success and error paths
+2. Add validation rules to `includes/validation.php` (pure functions, unit tested in `tests/Unit/ValidationTest.php`)
+3. Create model in `models/` directory following existing patterns
+4. Create controller in `controllers/` directory; call `csrf_require()` in every POST branch
+5. Create view(s) in `views/` directory; put `<?php echo csrf_field(); ?>` inside every POST form and escape all output
+6. Add route handling in `index.php`
+7. Update CSS in `public/css/style.css` if needed
+8. Cover the behaviour in `tests/Integration/` (HTTP) or `tests/Unit/` (pure rules), then run the suite
 
 ### Common Gotchas
 - Always use `??` null coalescing operator for optional request parameters
 - Remember to call `exit` after `header('Location: ...')`
 - Use `in_array()` to validate enum values before database operations
 - Don't forget to sanitize output in views with `htmlspecialchars()`
-- Use `trim()` on text inputs before validation
+- Use `trim()` on text inputs before validation (via `form_string()`)
 - Check `$_SERVER['REQUEST_METHOD']` to distinguish GET from POST
 - Include `user_id` in all database queries for data isolation
+- Call `csrf_require()` at the start of every POST handler and add `csrf_field()` to the matching form; state changes are POST-only (GET answers 405)
+- Read request values through `form_string()`/`task_id()` so arrays and junk become safe defaults instead of crashing
