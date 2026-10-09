@@ -56,6 +56,42 @@ final class ValidationTest extends TestCase
         $this->assertSame([], task_errors('Ship it', 'Details'));
     }
 
+    public function testRegistrationRejectsOverlongInput(): void
+    {
+        $this->assertSame(
+            ['Username must be at most 50 characters'],
+            registration_errors(str_repeat('a', 51), 'alice@example.com', 'secret123', 'secret123')
+        );
+        $this->assertSame(
+            ['Email must be at most 100 characters'],
+            registration_errors('alice', str_repeat('a', 90) . '@example.com', 'secret123', 'secret123')
+        );
+        $this->assertSame(
+            ['Password must be at most 72 characters'],
+            registration_errors('alice', 'alice@example.com', str_repeat('a', 73), str_repeat('a', 73))
+        );
+    }
+
+    public function testRegistrationAcceptsBoundaryLengths(): void
+    {
+        $this->assertSame(
+            [],
+            registration_errors(
+                str_repeat('a', 50),
+                str_repeat('a', 32) . '@' . str_repeat('b', 55) . '.example.com',
+                str_repeat('a', 72),
+                str_repeat('a', 72)
+            )
+        );
+    }
+
+    public function testTaskRejectsOverlongFields(): void
+    {
+        $this->assertSame(['Title must be at most 255 characters'], task_errors(str_repeat('a', 256), ''));
+        $this->assertSame(['Description must be at most 65535 characters'], task_errors('Ship it', str_repeat('a', 65536)));
+        $this->assertSame([], task_errors(str_repeat('a', 255), str_repeat('a', 65535)));
+    }
+
     public function testPriorityFallsBackToMedium(): void
     {
         $this->assertSame('low', normalize_priority('low'));

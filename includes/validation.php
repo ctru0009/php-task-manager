@@ -30,10 +30,14 @@ function registration_errors(string $username, string $email, string $password, 
         $errors[] = 'Username is required';
     } elseif (strlen($username) < 3) {
         $errors[] = 'Username must be at least 3 characters';
+    } elseif (strlen($username) > 50) {
+        $errors[] = 'Username must be at most 50 characters';
     }
 
     if (empty($email)) {
         $errors[] = 'Email is required';
+    } elseif (strlen($email) > 100) {
+        $errors[] = 'Email must be at most 100 characters';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Invalid email format';
     }
@@ -42,6 +46,8 @@ function registration_errors(string $username, string $email, string $password, 
         $errors[] = 'Password is required';
     } elseif (strlen($password) < 6) {
         $errors[] = 'Password must be at least 6 characters';
+    } elseif (strlen($password) > 72) {
+        $errors[] = 'Password must be at most 72 characters';
     }
 
     if ($password !== $confirmPassword) {
@@ -74,6 +80,12 @@ function task_errors(string $title, string $description): array
 
     if (empty($title)) {
         $errors[] = 'Title is required';
+    } elseif (strlen($title) > 255) {
+        $errors[] = 'Title must be at most 255 characters';
+    }
+
+    if (strlen($description) > 65535) {
+        $errors[] = 'Description must be at most 65535 characters';
     }
 
     return $errors;
